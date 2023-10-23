@@ -33,8 +33,8 @@ if __name__ == '__main__':
 
     sensorList = list(range(1,9))
     
-    for sensor in sensorList:
-        sensor_data = pd.read_csv("data/sensor_t" + str(sensor) + ".csv")
+    for sensor in [5]:
+        sensor_data = pd.read_csv("../data/sensor_t" + str(sensor) + ".csv")
         func = functions(sensor_data,0, False, False)
         threshold = func.find_threshold_based_on_variation()
         
@@ -45,17 +45,17 @@ if __name__ == '__main__':
         
         count = 1 
         sensorData = dict()
-        for year in sensor_data['year'].unique():
+        for year in [sensor_data['year'].unique()[0]]:
             # Filter data based on the specified date
             idx = (sensor_data['year'] == year)
             filtered_data_step1 = sensor_data.loc[idx,:]
-            for month in filtered_data_step1['month'].unique():
+            for month in [filtered_data_step1['month'].unique()[0]]:
                 idx = (filtered_data_step1['month'] == month) 
                 filtered_data_step2 = filtered_data_step1.loc[idx,:]
-                for day in filtered_data_step2['day_of_month'].unique():
+                for day in [filtered_data_step2['day_of_month'].unique()[3]]:
                     idx = (filtered_data_step2['day_of_month'] == day)
                     filtered_data = filtered_data_step2.loc[idx,:]
-                    func = functions(filtered_data,threshold, True, True)
+                    func = functions(filtered_data,threshold,sensor, True, True)
                     data = func.data_preperation()
                     output = func.first_derivative()
                     allData = dict()
@@ -78,9 +78,9 @@ if __name__ == '__main__':
     #     writer = csv.writer(csv_file)
     #     for key, value in aggregated_data.items():
     #         writer.writerow([key, value])
-        with open('data/aggregated_data'+ str(sensor), 'wb') as fout:
-            pickle.dump(aggregated_data, fout)
-        fout.close()
+        # with open('data/aggregated_data'+ str(sensor), 'wb') as fout:
+        #     pickle.dump(aggregated_data, fout)
+        # fout.close()
     # aggregate_sharp_changes();
     
 

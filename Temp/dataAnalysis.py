@@ -88,9 +88,9 @@ if __name__ == '__main__':
     sensor_number = 1
     pd.options.mode.chained_assignment = None 
     # Time period
-    year = 2021
-    month = 9
-    day_of_month = 3
+    year = 2022
+    month = 1
+    day_of_month = 9
     
     # Define a threshold to detect sharp changes
     threshold = 2.69

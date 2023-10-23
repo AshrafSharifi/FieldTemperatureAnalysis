@@ -9,12 +9,12 @@ import pickle
 if __name__ == '__main__':
     
     pd.options.mode.chained_assignment = None 
-    display = False
+    display = True
     sensorList = list(range(1,9))
     
-    for sensor in [sensorList]:     
-        sensor_data = pd.read_csv("data/sensor_t" + str(sensor) + ".csv")
-        fin_name = 'data/aggregated_data'+ str(sensor)
+    for sensor in [1]:     
+        sensor_data = pd.read_csv("../data/sensor_t" + str(sensor) + ".csv")
+        fin_name = '../data/aggregated_data'+ str(sensor)
         with open(fin_name, 'rb') as fin:
             aggregated_data = pickle.load(fin)
         fin.close() 

@@ -7,12 +7,13 @@ from IPython.display import display
 
 class functions(object):
 
-  def __init__(self, sensor_data, threshold=0, displayResult=False, hasOutput=False):
+  def __init__(self, sensor_data, threshold=0,sensor=0, displayResult=False, hasOutput=False):
         self.df = sensor_data;
         self.threshold = threshold;
-        self.date = str(sensor_data['year']) + '-' + str(sensor_data['month']) + '-' + str(sensor_data['day_of_month']);
+        self.date = str(sensor_data['year'].iloc[0]) + '-' + str(sensor_data['month'].iloc[0]) + '-' + str(sensor_data['day_of_month'].iloc[0]);
         self.displayResult = displayResult
         self.hasOutput = hasOutput
+        self.sensor = sensor
   def data_preperation(self):
 
     # Calculate temperature change as the difference between consecutive temperature values
@@ -36,15 +37,15 @@ class functions(object):
     derivative = np.diff(temperature_data)
     
     # Find indices where the derivative exceeds the threshold
-    # sharp_change_indices = np.where(np.abs(derivative) > self.threshold)[0]
-    average_temperature = temperature_data.mean()
+    sharp_change_indices = np.where(np.abs(derivative) > self.threshold)[0]
+    # average_temperature = temperature_data.mean()
 
-    # Find indices of values exceeding the threshold in both directions
-    above_threshold_indices = np.where(temperature_data > average_temperature + self.threshold)[0]
-    below_threshold_indices = np.where(temperature_data < average_temperature - self.threshold)[0]
+    # # Find indices of values exceeding the threshold in both directions
+    # above_threshold_indices = np.where(temperature_data > average_temperature + self.threshold)[0]
+    # below_threshold_indices = np.where(temperature_data < average_temperature - self.threshold)[0]
     
-    # Concatenate the indices into a single array
-    sharp_change_indices = np.concatenate((above_threshold_indices, below_threshold_indices))
+    # # Concatenate the indices into a single array
+    # sharp_change_indices = np.concatenate((above_threshold_indices, below_threshold_indices))
 
     
     if self.displayResult:
@@ -53,14 +54,14 @@ class functions(object):
         print(time_vector[sharp_change_indices])
         print('Sharp Change Values:')
         print(derivative[sharp_change_indices])
-        
+        plt.close('all')
         # Plot the temperature data with detected sharp changes
         plt.figure()
         plt.plot(time_vector, temperature_data, 'b', linewidth=2)
         plt.scatter(time_vector[sharp_change_indices], temperature_data[sharp_change_indices], c='r', marker='o')
         plt.xlabel('Time Intervals')
         plt.ylabel('Temperature')
-        plt.title("Temperature Data with Sharp Change Detection (" + self.date + ")")
+        plt.title("Temperature Data with Sharp Change Detection (" + self.date + "_Sensor: "+ str(self.sensor) +" _Threshold: "+ str(round(self.threshold, 3) )+ " )")
         plt.legend(['Temperature Data', 'Sharp Changes'])
         plt.grid(True)
         plt.show()
@@ -116,15 +117,16 @@ class functions(object):
     #     return out
 
   def corr_matrix(self, columns):
-    columns =['temperatureChange','temp_to_estimate','temp_centr','hum','dewpoint__c','wetbulb_c','windspeed_km_h','thswindex_c','rain_mm','solar_rad_w_m_2']
+    columns =['temperatureChange','temp_to_estimate','temp_centr','hum','dewpoint__c','wetbulb_c','windspeed_km_h','thswindex_c','solar_rad_w_m_2']
     # df = self.df[['temperatureChange','temp_to_estimate','temp_centr','hum','dewpoint__c','wetbulb_c','windspeed_km_h','thswindex_c','rain_mm','solar_rad_w_m_2']]
     df = self.df[columns]
    
     # Drop non-numerical variables
-    _, axes = plt.subplots(nrows=1, ncols=1, figsize=(8, 5))
+    # _, axes = plt.subplots(nrows=1, ncols=1, figsize=(8, 5))
     corr_matrix = df.corr()
-    display(corr_matrix)
-    sns.heatmap(corr_matrix,ax=axes);
+    return(corr_matrix)
+    # display(corr_matrix)
+    # sns.heatmap(corr_matrix,ax=axes);
     
   def find_threshold_based_on_variation(self):
 
@@ -138,12 +140,9 @@ class functions(object):
     # Define a threshold as a multiple of the standard deviation (e.g., 2 times the std)
     threshold = 2 * std_variations
     
-    # Print the mean, standard deviation, and the threshold for temperature variations
-    print(f"Mean Temperature Variations: {mean_variations}")
-    print(f"Standard Deviation of Variations: {std_variations}")
-    print(f"Threshold for Variations: {threshold}")
+    return(threshold)
     
-    # Now you can use the threshold to detect significant temperature variations.
+
     
   def find_threshold(self):
 
