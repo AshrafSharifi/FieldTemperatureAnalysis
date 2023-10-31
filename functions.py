@@ -3,14 +3,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from IPython.display import display
+import pickle
+from datetime import datetime, timedelta
 
 
 class functions(object):
 
-  def __init__(self, sensor_data, threshold=0,sensor=0, displayResult=False, hasOutput=False):
+  def __init__(self, sensor_data = dict(), threshold=0,sensor=0, displayResult=False, hasOutput=False):
         self.df = sensor_data;
         self.threshold = threshold;
-        self.date = str(sensor_data['year'].iloc[0]) + '-' + str(sensor_data['month'].iloc[0]) + '-' + str(sensor_data['day_of_month'].iloc[0]);
+        if len(sensor_data)!=0:
+            self.date = str(sensor_data['year'].iloc[0]) + '-' + str(sensor_data['month'].iloc[0]) + '-' + str(sensor_data['day_of_month'].iloc[0]);
+        else:
+            self.date = ""
         self.displayResult = displayResult
         self.hasOutput = hasOutput
         self.sensor = sensor
@@ -156,5 +161,96 @@ class functions(object):
     # Define a threshold as a multiple of the standard deviation (e.g., 2 times the std)
     threshold = 2 * std_variations
     return (threshold)
+  
+  def add_minutes(self,base_time, minutes_to_add):
+    # Parse the base time as a datetime object
+    base_time = datetime.strptime(base_time, '%H:%M:%S')
+
+    # Create a timedelta to represent the minutes to add
+    time_delta = timedelta(minutes=minutes_to_add)
+
+    # Add the timedelta to the base time
+    result_time = base_time + time_delta
+
+    # Format the result as a string in HH:MM:SS format
+    result_time_str = result_time.strftime('%H:%M:%S')
+    hours = result_time.hour
+    minutes = result_time.minute
+
+    return hours, minutes
+    
+    
+  def time_to_reach_POI(self):
+      
+      reach_time = dict()
+      S1 = {'1_2': 15, '1_3': 90, '1_4': 30, '1_5': 75, '1_6': 45, '1_7': 60}
+      reach_time['sensor1']= S1;
+      
+      S2 = {'2_1': 90, '2_3': 75, '2_4': 15 ,'2_5': 60, '2_6': 30, '2_7': 45}
+      reach_time['sensor2']= S2;
+       
+      S3 = {'3_1': 15, '3_2': 30, '3_4':45  ,'3_5':90 , '3_6':60 , '3_7':75 }
+      reach_time['sensor3']= S3;
+      
+      S4 = {'4_1':75 , '4_2':90 , '4_3':60  ,'4_5':45 , '4_6':15 , '4_7':30 }
+      reach_time['sensor4']= S4;
+      
+      S5 = {'5_1':30 , '5_2':45 , '5_3':15  ,'5_4':60 , '5_6':75 , '5_7':90 }
+      reach_time['sensor5']= S5;
+      
+      S6 = {'6_1':60 ,'6_2':75 , '6_3':45 , '6_4':90  ,'6_5':30 , '6_7':15 }
+      reach_time['sensor6']= S6
+      
+      S7 = {'7_1': 45, '7_2':60 , '7_3':30  ,'7_4': 75, '7_5':15 , '7_6':90 }
+      reach_time['sensor7']= S7;
+     
+      return reach_time;
+  
+  def get_all_data(self):
+        
+        sensorList = list(range(1,9))
+        output = dict()
+        for sensor in sensorList:
+            fin_name = 'data/aggregated_data' + str(sensor)
+            with open(fin_name, 'rb') as fin:
+                aggregated_data = pickle.load(fin)
+                output["sensor" + str(sensor)] = aggregated_data
+            fin.close() 
+            
+        return output
+  # def prepare_data_for_train(self):
+      
+  #     pd.options.mode.chained_assignment = None 
+  #     sensorList = list(range(1,9))
+     
+  #     for sensor in sensorList: 
+  #         fin_name = 'data/aggregated_data' + str(sensor)
+  #         with open(fin_name, 'rb') as fin:
+  #             aggregated_data = pickle.load(fin)
+  #         fin.close()
+   
+  def change_outlier(self,df):
+      
+        
+        # Calculate the IQR (Interquartile Range) to identify outliers
+        Q1 = df['temp_to_estimate'].quantile(0.25)
+        Q3 = df['temp_to_estimate'].quantile(0.75)
+        IQR = Q3 - Q1
+        
+        # Define a threshold to identify outliers (you can adjust this as needed)
+        outlier_threshold = 1.5
+        
+        # Identify outliers
+        outliers = df[(df['temp_to_estimate'] < Q1 - outlier_threshold * IQR) | (df['temp_to_estimate'] > Q3 + outlier_threshold * IQR)]
+        
+        # Replace outliers with their previous values
+        for idx in outliers.index:
+            if idx > 0:
+                df.at[idx, 'temp_to_estimate'] = df.at[idx - 1, 'temp_to_estimate']
+        
+        return df       
+      
+
+
     
  

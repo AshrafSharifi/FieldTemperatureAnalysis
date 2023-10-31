@@ -32,10 +32,30 @@ if __name__ == '__main__':
     # threshold = 2.69
 
     sensorList = list(range(1,9))
-    
+    min_temp = 0
+    max_temp = 0
     for sensor in sensorList:
         sensor_data = pd.read_csv("data/sensor_t" + str(sensor) + ".csv")
+        
+
+        # -------remove data of days which has small size
+        grouped = sensor_data.groupby(['year','month','day_of_month'])
+        group_sizes = grouped.size().reset_index(name='GroupSize')
+        valid_groups = grouped.filter(lambda x: len(x) == 96)
+        indices_to_keep = valid_groups.index
+        sensor_data = sensor_data.loc[indices_to_keep]
+        # ----------------------------------------------
+        
+        
         func = functions(sensor_data,0, False, False)
+        sensor_data = func.change_outlier(sensor_data)
+        
+        if min(sensor_data["temp_to_estimate"]) < min_temp:
+            min_temp = min(sensor_data["temp_to_estimate"])
+        
+        if max(sensor_data["temp_to_estimate"]) > max_temp:
+            max_temp = max(sensor_data["temp_to_estimate"])
+            
         threshold = func.find_threshold_based_on_variation()
         
         
@@ -55,7 +75,7 @@ if __name__ == '__main__':
                 for day in filtered_data_step2['day_of_month'].unique():
                     idx = (filtered_data_step2['day_of_month'] == day)
                     filtered_data = filtered_data_step2.loc[idx,:]
-                    func = functions(filtered_data,threshold, True, True)
+                    func = functions( filtered_data, threshold=threshold,sensor=0, displayResult=False, hasOutput=True)
                     data = func.data_preperation()
                     output = func.first_derivative()
                     allData = dict()
@@ -66,9 +86,14 @@ if __name__ == '__main__':
                     allData["month"] = month;
                     allData["day"] = day;
                     # allData["sharpChangedData"] = output;
-                    allData["SharpChangeValues"] = output["SharpChangeValues"] 
-                    allData["SharpChangeIndices"] = output["SharpChangeIndices"]
-                    allData["SharpChangeTimes"] = output["SharpChangeTimes"] 
+                    if output == None:
+                        allData["SharpChangeValues"] = [] 
+                        allData["SharpChangeIndices"] = []
+                        allData["SharpChangeTimes"] = []
+                    else:
+                        allData["SharpChangeValues"] = output["SharpChangeValues"] 
+                        allData["SharpChangeIndices"] = output["SharpChangeIndices"]
+                        allData["SharpChangeTimes"] = output["SharpChangeTimes"] 
                     sensorData[count] = allData;
                     count += 1
 
@@ -81,6 +106,16 @@ if __name__ == '__main__':
         with open('data/aggregated_data'+ str(sensor), 'wb') as fout:
             pickle.dump(aggregated_data, fout)
         fout.close()
+        
+    
+    temp_info = dict()
+    temp_info['min_temp'] = min_temp
+    temp_info['max_temp'] = max_temp
+    
+    with open('data/temp_info', 'wb') as fout:
+        pickle.dump(temp_info, fout)
+    fout.close()
+    
     # aggregate_sharp_changes();
     
 
