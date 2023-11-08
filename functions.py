@@ -5,7 +5,7 @@ import seaborn as sns
 from IPython.display import display
 import pickle
 from datetime import datetime, timedelta
-
+from tabulate import tabulate
 
 class functions(object):
 
@@ -251,6 +251,8 @@ class functions(object):
         return df       
       
 
+
+     
 
     
  

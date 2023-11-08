@@ -20,8 +20,8 @@ class DQN:
         self.batch_size = 8  # Batch size for training
         self.memory_size = 20000  # Size of the experience replay buffer
         self.reach_time = dict()
-        self.temperature_weight = 2  # Weight for maximizing temperature change
-        self.time_weight = 3  # Weight for minimizing time
+        self.temperature_weight = 0.3  # Weight for maximizing temperature change
+        self.time_weight = 0.7  # Weight for minimizing time
         
         self.memory = deque(maxlen=self.memory_size)
         self.model = self._build_model()
@@ -31,35 +31,20 @@ class DQN:
         data = self.func.get_all_data()
         self.sensorsdata= data
         self.reach_time_minutes = 0
-        
         self.min_time = 15
         self.max_time = 90
         
-        self.min_temp = 0
-        self.max_temp = 0
-        
-        # self.get_min_max_temp()
-
-        
-        # fin_name = 'data/temp_info' 
-        # with open(fin_name, 'rb') as fin:
-        #     temp_info = pickle.load(fin)
+        fin_name = 'data/temp_info' 
+        with open(fin_name, 'rb') as fin:
+            temp_info = pickle.load(fin)
             
-        # fin.close() 
+        fin.close() 
         
-        # self.min_temp = temp_info['min_temp']
-        # self.max_temp = temp_info['max_temp']
-        
+        self.min_temp = temp_info['min_temp']
+        self.max_temp = temp_info['max_temp']
         
 
-    def get_min_max_temp(self,state):
-        temp_data =  self.sensorsdata["sensor"+str(state[0])]
-        temp_data = [value for value in temp_data.values()][0]
-        state_data = [value for value in temp_data.values() if value['year'] == state[1] and value['month'] == state[2] and value['day'] == state[3]] 
-        temp_var = state_data[0]['sensorData']
-        self.min_temp = min(temp_var["temp_to_estimate"])
-        self.max_temp = max(temp_var["temp_to_estimate"])
-        
+
     def _build_model(self):
         model = Sequential()
         model.add(Dense(24, input_dim=self.state_dim, activation='relu'))
@@ -147,25 +132,43 @@ class DQN:
     
     def calculate_reward(self,state, next_state):
         
+        
+        
 
         if next_state[0,0]== state[0,0]:
-            return -1000,0,90
+            return -1000000000,0,1000
         else:    
-                    
+            
+            temp_data =  self.sensorsdata["sensor"+str(state[0,0])]
+            temp_data = [value for value in temp_data.values()][0]
+            state_data = [value for value in temp_data.values() if value['year'] == state[0,1] and value['month'] == state[0,2] and value['day'] == state[0,3]] 
+            temp_var = state_data[0]['sensorData']
+            current_sate = temp_var[temp_var['hour'] == state[0,4]]
+            
             current_temperature = self.get_current_temp(state)
-            next_temperature = self.get_current_temp(next_state)
 
+        
+        
+            temp_data =  self.sensorsdata["sensor"+str(next_state[0,0])]
+            temp_data = [value for value in temp_data.values()][0]
+            next_state_data = [value for value in temp_data.values() if value['year'] == next_state[0,1] and value['month'] == next_state[0,2] and value['day'] == next_state[0,3]] 
+            temp_var = next_state_data[0]['sensorData']
+            next_sate = temp_var[temp_var['hour'] == next_state[0,4]]
+            next_temperature = self.get_current_temp(next_state)
+         
+    
+            
             # Calculate the temperature change from current to next state
-            temperature_change = (next_temperature - current_temperature)
-            time_factor = self.reach_time_minutes
-            temperature_change =abs( (temperature_change - self.min_temp) / (self.max_temp - self.min_temp))
+            temperature_difference = abs(next_temperature - current_temperature)
+            
+            temperature_change = (temperature_difference - self.min_temp) / (self.max_temp - self.min_temp)
             time_factor = (self.reach_time_minutes - self.min_time) / (self.max_time - self.min_time)
     
             # Combine the two factors with the defined weights
             reward = (self.temperature_weight * temperature_change) - (self.time_weight * time_factor)
             
             
-            return reward,temperature_change,self.reach_time_minutes
+            return reward,temperature_difference,self.reach_time_minutes
 
         
         
