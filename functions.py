@@ -162,22 +162,48 @@ class functions(object):
     threshold = 2 * std_variations
     return (threshold)
   
-  def add_minutes(self,base_time, minutes_to_add):
-    # Parse the base time as a datetime object
-    base_time = datetime.strptime(base_time, '%H:%M:%S')
+  def add_minute(self,base_time, minutes_to_add):
+     # Parse the base time as a datetime object
+     base_time = datetime.strptime(base_time, '%H:%M:%S')
 
-    # Create a timedelta to represent the minutes to add
-    time_delta = timedelta(minutes=minutes_to_add)
+     # Create a timedelta to represent the minutes to add
+     time_delta = timedelta(minutes=minutes_to_add)
 
-    # Add the timedelta to the base time
-    result_time = base_time + time_delta
+     # Add the timedelta to the base time
+     result_time = base_time + time_delta
 
-    # Format the result as a string in HH:MM:SS format
-    result_time_str = result_time.strftime('%H:%M:%S')
-    hours = result_time.hour
-    minutes = result_time.minute
+     # Format the result as a string in HH:MM:SS format
+     result_time_str = result_time.strftime('%H:%M:%S')
+     hours = result_time.hour
+     minutes = result_time.minute
 
-    return hours, minutes
+     return hours, minutes
+  
+  def add_minutes(self, base_time, minutes_to_add):
+      
+      flag= False
+      # Parse the base time as a datetime object
+      base_time = datetime.strptime(base_time, '%H:%M:%S')
+
+      # Create a timedelta to represent the minutes to add
+      time_delta = timedelta(minutes=minutes_to_add)
+
+      # Add the timedelta to the base time
+      result_time = base_time + time_delta
+
+      # Check if the resulting time is greater than or equal to 24 hours
+      day_difference = (result_time.date() - base_time.date()).days
+
+     # Check if dt2 is the next day of dt1
+      if day_difference == 1:
+          flag = True
+
+      # Format the result as a string in HH:MM:SS format
+      result_time_str = result_time.strftime('%H:%M:%S')
+      hours = result_time.hour
+      minutes = result_time.minute
+
+      return hours, minutes, flag
     
     
   def time_to_reach_POI(self):

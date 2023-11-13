@@ -10,6 +10,8 @@ from tabulate import tabulate
 class DQN:
     def __init__(self):
         
+        self.max_steps_per_episode = 50
+        self.episode_count = 20
         # Define your state and action spaces, and other relevant parameters
         self.state_dim = 6  # Dimension of the state
         self.action_dim = 7  # Number of possible actions
@@ -38,7 +40,8 @@ class DQN:
         self.min_temp = 0
         self.max_temp = 0
         
-        # self.get_min_max_temp()
+        # self.state=None
+        # self.get_min_max_temp(self.state)
 
         
         # fin_name = 'data/temp_info' 
@@ -118,14 +121,16 @@ class DQN:
             reach_to_next_time = reach_time[str(current_sensor)+'_'+str(action)]
             self.reach_time_minutes = reach_to_next_time
             base_time = str(current_hour)+':'+str(current_minute)+':00'
-            next_hour, next_min = self.func.add_minutes(base_time, reach_to_next_time)
+            next_hour, next_min, Flag = self.func.add_minutes(base_time, reach_to_next_time)
             new_state = [action,state[0,1],state[0,2],state[0,3],next_hour,next_min]
-        return new_state
+        return new_state, Flag
         
     def get_current_temp(self,state):
             temp_data =  self.sensorsdata["sensor"+str(state[0,0])]
             temp_data = [value for value in temp_data.values()][0]
             state_data = [value for value in temp_data.values() if value['year'] == state[0,1] and value['month'] == state[0,2] and value['day'] == state[0,3]] 
+            if len(state_data)==0:
+                return None
             temp_var = state_data[0]['sensorData']
             current_sate = temp_var[temp_var['hour'] == state[0,4]]
             
@@ -207,7 +212,7 @@ class DQN:
             iteration += 1
     
     
-    def print_traj(self,path):
+    def print_traj(self,path,print_flag=True):
         
         passedkeys = {key:value[1] for key, value in path.items() if value[0] == 'Passed'}
         list_of_tuples = [(key, value) for key, value in passedkeys.items()]
@@ -216,20 +221,30 @@ class DQN:
         sorted_list = sorted(list_of_tuples, key=lambda x: x[1])
         
         for (key,val) in sorted_list:
-            previouskey = {pkey for pkey, value in path.items() if value[1] == (path[key][1]-1)}
+            
+            if key == '1':
+                previouskey = {pkey for pkey, value in path.items() if value[1] == 7}
+            else:
+                previouskey = {pkey for pkey, value in path.items() if value[1] == (path[key][1]-1)}
             if len(previouskey) == 0:
                 continue
             pre_state = np.reshape(path[previouskey.pop()][5], [1, self.state_dim]) 
             base_time = str(pre_state[0,4])+':'+str(pre_state[0,5])+':00'
-            next_hour, next_min = self.func.add_minutes(base_time, 15)
+            next_hour, next_min, Flag = self.func.add_minutes(base_time, 15)
             state= np.array([int(key) ,int(pre_state[0,1]), int(pre_state[0,2]), int(pre_state[0,3]), next_hour, next_min])
             path[key][5] = np.reshape(state, [1, self.state_dim])
             
         for key, value in path.items():
-            path[key][6] = self.get_current_temp(path[key][5])
+            if value[0] != 'NotVisited':
+                path[key][6] = self.get_current_temp(path[key][5])
         
         headers = ["POI_number", "Status", "Priority", "Reward", "Temp_difference", "Reach_time", "State","temperature"]
         table = []
         for key, values in path.items():
-            table.append([key, *values])
-        print(tabulate(table, headers, tablefmt="pretty")) 
+            if values[0] != 'NotVisited':
+                table.append([key, *values])
+        table = sorted(table, key=lambda x: (x[6][0][3],x[6][0][4], x[6][0][5]))
+        if print_flag:
+            print(tabulate(table, headers, tablefmt="pretty"))
+        return table
+        
