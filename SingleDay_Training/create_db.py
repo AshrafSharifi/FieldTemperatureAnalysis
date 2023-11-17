@@ -138,7 +138,7 @@ def del_rows(del_sensors,state):
             us_df.to_csv(delete_csv_file, index=False, encoding='utf-8')
                 
                 
-def update_status(path):
+def update_status(path,df_train,df_test):
     
     
     
@@ -155,13 +155,18 @@ def update_status(path):
         df.loc[indx,'status'] = item[0]
         df.to_csv(csv_file, index=False, encoding='utf-8')
         if item[0]=='Visited':
+            
+            df_train.loc[len(df_train)] = list(df.iloc[indx]) + [str(sensor)]
             del_sensors = list(range(1,9))
             del_sensors.remove(sensor)
             del_rows(del_sensors,state)
 
         if item[0]=='Passed':
+            df_test.loc[len(df_test)] = list(df.iloc[indx]) + [str(sensor)]
             del_sensors = list(range(1,9))
             del_rows(del_sensors,state)
+            
+    return df_train,df_test
             
         
     
@@ -170,35 +175,40 @@ def update_status(path):
 if __name__ == '__main__':
     
     pd.options.mode.chained_assignment = None 
-    # create_states_dict()
-    # add_status_col_to_csv()
-    # create_states_dict()
+    create_states_dict()
+    add_status_col_to_csv()
+    create_states_dict()
     fin_name = 'data/states_dict'
     with open(fin_name, 'rb') as fin:
         states_dict = pickle.load(fin)
     fin.close() 
+    path_of_model = 'data/models/dqn_model150.h5'
+    dqn = DQN()
+    dqn.get_min_max_temp()
+    
+    change_month = False
+
+    csv_file = "data/DB/DB_with_status/sensor_t1.csv"   
+    df = pd.read_csv(csv_file)
+    df_train =  pd.DataFrame(columns=list(df.columns) + ['sensor'])
+    df_test =  pd.DataFrame(columns=list(df.columns) + ['sensor'])
     
     for key,value in states_dict.items():
-        if key != '2021_9':
-            continue
+        # if key != '2021_9':
+        #     continue
         [y,m] = key.split('_')
-        d = value[16]
+        d = value[0]
         h = 0
         Min = 0
-        while True:
+        change_month=False
+        while change_month==False:
 
             current_state = [1 ,int(y), int(m), d, h, Min]  # Sensor number, year, month, day, hour, minute   
-            path_of_model = 'data/models/dqn_model_' + str(y) +'_'+ str(m) + '_' + str(d) + '.h5'
-            dqn = DQN()
-            dqn.get_min_max_temp(current_state)
-            # if d > 31:
-            #     print(current_state)
-            #     break
             while True:
                 print(current_state)
                 current_state,path = dqn_train.test(current_state, path_of_model,False,dqn)
                 path = {key: value for key, value in path.items() if value[0]!= 'NotVisited'}
-                update_status(path)
+                df_train,df_test = update_status(path,df_train,df_test)
                 if int(current_state[3]) == d+1:
                     d = current_state[3]
                     m = current_state[2]
@@ -208,11 +218,15 @@ if __name__ == '__main__':
                         while d not in temp_val:
                             d += 1
                             if(d>max(temp_val)):
+                                change_month = True
                                 break
                             
                     h = current_state[4]
                     Min = current_state[5]
                     break
+                
+    df_train.to_csv("data/DB/train_DB.csv", index=False, encoding='utf-8')
+    df_test.to_csv("data/DB/test_DB.csv", index=False, encoding='utf-8')
                     
                 
  

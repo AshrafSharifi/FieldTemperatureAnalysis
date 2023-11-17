@@ -25,11 +25,11 @@ if __name__ == '__main__':
     for sensor in sensorList:
         
         
-        output_csv_file = "data/DB/DB_with_status/sensor_t" + str(sensor) + ".csv"
-        del_csv_file = "data/DB/DB_with_deleted_rows/sensor_t" + str(sensor) + ".csv"
+        output_csv_file = "data/sensor_t" + str(sensor) + ".csv"
+        # del_csv_file = "data/DB/DB_with_deleted_rows/sensor_t" + str(sensor) + ".csv"
         
         sensor_data = pd.read_csv(output_csv_file)
-        del_sensor_data = pd.read_csv(del_csv_file)
+        # del_sensor_data = pd.read_csv(del_csv_file)
         
         for de in del_items:
             
@@ -37,14 +37,15 @@ if __name__ == '__main__':
             sensor_data = sensor_data.drop(matching_rows)
             sensor_data.to_csv(output_csv_file, index=False, encoding='utf-8')
             
-            matching_rows = del_sensor_data[del_sensor_data['complete_timestamp(YYYY_M_DD_HH_M)'].str.startswith(de)].index
-            del_sensor_data = del_sensor_data.drop(matching_rows)
-            del_sensor_data.to_csv(del_csv_file, index=False, encoding='utf-8')
+            # matching_rows = del_sensor_data[del_sensor_data['complete_timestamp(YYYY_M_DD_HH_M)'].str.startswith(de)].index
+            # del_sensor_data = del_sensor_data.drop(matching_rows)
+            # del_sensor_data.to_csv(del_csv_file, index=False, encoding='utf-8')
         
        
         grouped = sensor_data.groupby(['year','month','day_of_month'])
-        group_sizes = grouped.size().reset_index(name='GroupSize')
-        valid_groups = grouped.filter(lambda x: len(x) ==96)
+        # group_sizes = grouped.size().reset_index(name='GroupSize')
+        valid_groups = grouped.filter(lambdsa x: len(x) ==96)
+        print("s"+ str(sensor) + "_" + str(len(grouped.groups.keys())))
         
         if sensor ==1:
             s1=list(grouped.groups.keys())

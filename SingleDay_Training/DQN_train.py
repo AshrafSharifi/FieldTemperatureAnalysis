@@ -13,7 +13,7 @@ from tensorflow.keras.models import load_model
 
 
 
-def train(initial_state, path_to_save):
+def train(initial_state, path_to_save,state_dict = None):
     dqn = DQN()
     dqn.get_min_max_temp(initial_state)
     # Training loop
@@ -22,6 +22,14 @@ def train(initial_state, path_to_save):
     
         state = initial_state  # Sensor number, year, month, day, hour, minute
         if episode > 1:
+            
+            state[0] =random.choice(range(1,8))
+            keys = list(state_dict.keys())
+            random_key = random.choice(keys)
+            [y,m] = random_key.split('_')
+            state[1]=int(y)
+            state[2]=int(m)
+            state[3] = random.choice(state_dict[random_key])
             random_hour = random.randint(0, 23)
             random_min = random.choice([0, 15, 30, 45])
             state[4] = random_hour
@@ -49,7 +57,7 @@ def train(initial_state, path_to_save):
                 
 
             # set choosed sensor as next step
-            next_state = dqn.step(state,action)  # Update the state based on the robot's movement
+            next_state,flag = dqn.step(state,action)  # Update the state based on the robot's movement
             next_state = np.reshape(next_state, [1, dqn.state_dim])
                               
                 
@@ -67,19 +75,21 @@ def train(initial_state, path_to_save):
             if step >= dqn.max_steps_per_episode - 1:
                break
      
-        dqn.replay(20)  # Train the DQN
+        dqn.replay(dqn.replay_count)  # Train the DQN
         
-        if episode == 50:
-            dqn.model.save("data/dqn_model50.h5")
-        elif episode == 70:
-            dqn.model.save("data/dqn_model70.h5")  
-        elif episode == 80:
-            dqn.model.save("data/dqn_model80.h5")                  
+        # if episode == 50:
+        #     dqn.model.save("data/dqn_model50.h5")
+        # elif episode == 70:
+        #     dqn.model.save("data/dqn_model70.h5")  
+        # elif episode == 80:
+        #     dqn.model.save("data/dqn_model80.h5")                  
 
     # Print the total reward for the episode
     print(f"Episode: {episode}, Total Reward: {total_reward}")
     dqn.model.save(path_to_save)
     
+
+
 
 def test(initial_state,path_to_save,print_flag=True,dqn = None):
     
@@ -129,10 +139,33 @@ def test(initial_state,path_to_save,print_flag=True,dqn = None):
         action = int(max_item[0])        
         path[str(action)][0] = 'Visited' 
         # Set the POI which are located befor the current state and not selected by algorithm to passed
-        passedkeys = dict()
-        passedkeys = {key for key, value in path.items() if value[1] < path[str(action)][1] and value[0] == 'NotVisited'}
-        for key in passedkeys:        
-            path[key][0] = 'Passed'
+        passedkeys = list()
+        
+        
+        
+        current_key = path[str(state[0][0])][1]+1
+        end_key = path[str(action)][1]
+        while current_key != end_key:
+            
+            if(int(current_key)==8):
+                current_key=1
+            p_k = [key for key, value in path.items() if value[1] == int(current_key) and value[0] == 'NotVisited']
+            if len(p_k)!=0:
+                passedkeys.append(p_k)
+                path[p_k[0]][0] = 'Passed'
+                next_key = path[p_k[0]][1]+1
+                current_key = int(next_key)
+            else:
+                break
+            
+      
+      
+        # passedkeys = {key for key, value in path.items() if value[1] < path[str(action)][1] and value[0] == 'NotVisited'}
+        # for key in passedkeys:        
+        #     path[key][0] = 'Passed'
+       
+        # if state[0][0]<action:
+        #    passedkeys.add({key for key, value in path.items() if value[1] > path[str(state[0][0])][1] and value[0] == 'NotVisited'})
         
         next_state,Flag = dqn.step(state,action) 
         next_state = np.reshape(next_state, [1, dqn.state_dim])
@@ -143,8 +176,8 @@ def test(initial_state,path_to_save,print_flag=True,dqn = None):
         path[str(action)][5] =  next_state
         state = next_state
         keys = {key for key, value in path.items() if value[0] == 'NotVisited'}
-        # if int(state[0][4]) == 22:
-        #     A=1
+        if int(state[0][4]) == 22:
+            A=1
         # if len(keys) == 0 or int(state[0][4]) == 0:
         if len(keys) == 0 or Flag:
             finish = True
@@ -175,9 +208,9 @@ if __name__ == '__main__':
     # Initialize the DQN agent
 
     train_phase =   False      
-    initial_state = [1 ,2021, 8, 28, 0, 0]  # Sensor number, year, month, day, hour, minute
+    initial_state = [6 ,2021, 8, 27, 15, 30]  # Sensor number, year, month, day, hour, minute
     
-    path_to_save = "data/models/dqn_model_2021_8_28.h5"
+    path_to_save = "data/models/dqn_model.h5"
     
     if train_phase: 
         train(initial_state,path_to_save)

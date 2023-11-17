@@ -76,12 +76,15 @@ if __name__ == '__main__':
     
     # states = states_dict[1]
     
-    for key,value in states_dict.items():
-        [y,m] = key.split('_')
-        for d in value:
-            initial_state = [1 ,int(y), int(m), d, 0, 0]
-            path_to_save = 'data/models/dqn_model_' + str(y) +'_'+ str(m) + '_' + str(d) + '.h5'
-            dqn_train.train(initial_state, path_to_save)
+    # for key,value in states_dict.items():
+    #     [y,m] = key.split('_')
+    #     for d in value:
+    key = list(states_dict.keys())[0]
+    [y,m] = key.split('_')
+    d = (states_dict[key])[0]
+    initial_state = [1 ,int(y), int(m), d, 0, 0]
+    path_to_save = 'data/models/dqn_model.h5'
+    dqn_train.train(initial_state, path_to_save,states_dict)
                 
     
     

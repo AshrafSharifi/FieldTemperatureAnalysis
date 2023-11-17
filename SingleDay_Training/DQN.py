@@ -10,8 +10,9 @@ from tabulate import tabulate
 class DQN:
     def __init__(self):
         
-        self.max_steps_per_episode = 50
-        self.episode_count = 20
+        self.max_steps_per_episode = 20
+        self.episode_count = 200
+        self.replay_count = 10
         # Define your state and action spaces, and other relevant parameters
         self.state_dim = 6  # Dimension of the state
         self.action_dim = 7  # Number of possible actions
@@ -55,13 +56,21 @@ class DQN:
         
         
 
-    def get_min_max_temp(self,state):
-        temp_data =  self.sensorsdata["sensor"+str(state[0])]
-        temp_data = [value for value in temp_data.values()][0]
-        state_data = [value for value in temp_data.values() if value['year'] == state[1] and value['month'] == state[2] and value['day'] == state[3]] 
-        temp_var = state_data[0]['sensorData']
-        self.min_temp = min(temp_var["temp_to_estimate"])
-        self.max_temp = max(temp_var["temp_to_estimate"])
+    def get_min_max_temp(self,state=None):
+        # temp_data =  self.sensorsdata["sensor"+str(state[0])]
+        # temp_data = [value for value in temp_data.values()][0]
+        # state_data = [value for value in temp_data.values() if value['year'] == state[1] and value['month'] == state[2] and value['day'] == state[3]] 
+        # temp_var = state_data[0]['sensorData']
+        # self.min_temp = min(temp_var["temp_to_estimate"])
+        # self.max_temp = max(temp_var["temp_to_estimate"])
+        
+        fin_name = 'data/temp_info' 
+        with open(fin_name, 'rb') as fin:
+            temp_info = pickle.load(fin)
+        fin.close() 
+        
+        self.min_temp = temp_info['min_temp']
+        self.max_temp = temp_info['max_temp']
         
     def _build_model(self):
         model = Sequential()
@@ -210,8 +219,19 @@ class DQN:
                 self.epsilon *= self.epsilon_decay
                 self.epsilon = max(self.epsilon, self.epsilon_min)
             iteration += 1
+            
+            
+    def get_previous_key(self,circular_dict, current_key):
+        keys = list(circular_dict.keys())
+        index = keys.index(current_key)
+        previous_index = (index - 1) % len(keys)
+        previous_key = keys[previous_index]
+        return previous_key
     
-    
+    def has_shape_zero(self,value):
+        return value[5].shape == (0, 0)
+
+
     def print_traj(self,path,print_flag=True):
         
         passedkeys = {key:value[1] for key, value in path.items() if value[0] == 'Passed'}
@@ -220,19 +240,43 @@ class DQN:
         # Sort the list of tuples based on the values
         sorted_list = sorted(list_of_tuples, key=lambda x: x[1])
         
-        for (key,val) in sorted_list:
+        while any(self.has_shape_zero(value) for value in path.values()):
+            for (key, val) in sorted_list:
+                while path[key][5].shape == (0, 0):
+                    previouskey_list = self.get_previous_key(path, key)
+                    
+                    if not previouskey_list:
+                        break  # Break the loop if there is no valid previous key
             
-            if key == '1':
-                previouskey = {pkey for pkey, value in path.items() if value[1] == 7}
-            else:
-                previouskey = {pkey for pkey, value in path.items() if value[1] == (path[key][1]-1)}
-            if len(previouskey) == 0:
-                continue
-            pre_state = np.reshape(path[previouskey.pop()][5], [1, self.state_dim]) 
-            base_time = str(pre_state[0,4])+':'+str(pre_state[0,5])+':00'
-            next_hour, next_min, Flag = self.func.add_minutes(base_time, 15)
-            state= np.array([int(key) ,int(pre_state[0,1]), int(pre_state[0,2]), int(pre_state[0,3]), next_hour, next_min])
-            path[key][5] = np.reshape(state, [1, self.state_dim])
+                    previouskey = previouskey_list[0]
+            
+                    if path[previouskey][5].shape != (0, 0):
+                        pre_state = np.reshape(path[previouskey][5], [1, self.state_dim]) 
+                        base_time = str(pre_state[0, 4]) + ':' + str(pre_state[0, 5]) + ':00'
+                        next_hour, next_min, Flag = self.func.add_minutes(base_time, 15)
+                        state = np.array([int(key), int(pre_state[0, 1]), int(pre_state[0, 2]), int(pre_state[0, 3]), next_hour, next_min])
+                        path[key][5] = np.reshape(state, [1, self.state_dim])
+            
+                    key = previouskey
+
+        # for (key,val) in sorted_list:
+            
+            
+            
+            # if key == '1':
+            #     previouskey = {pkey for pkey, value in path.items() if value[1] == 7 and value[0]!= 'NotVisited'}
+            # else:
+            #     previouskey = {pkey for pkey, value in path.items() if value[1] == (path[key][1]-1) and value[0]!= 'NotVisited'}
+            # if len(previouskey) == 0:
+            #     continue
+            # previouskey = list(previouskey)
+            
+            
+            # pre_state = np.reshape(path[previouskey[0]][5], [1, self.state_dim]) 
+            # base_time = str(pre_state[0,4])+':'+str(pre_state[0,5])+':00'
+            # next_hour, next_min, Flag = self.func.add_minutes(base_time, 15)
+            # state= np.array([int(key) ,int(pre_state[0,1]), int(pre_state[0,2]), int(pre_state[0,3]), next_hour, next_min])
+            # path[key][5] = np.reshape(state, [1, self.state_dim])
             
         for key, value in path.items():
             if value[0] != 'NotVisited':
