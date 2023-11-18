@@ -35,7 +35,7 @@ def create_model():
 train = True
 normalize_flag = True
 dropout = 0.55
-epochs = 500
+epochs = 300
 batch_size = 32
 validation_split = 0.2
 timesteps = 3
