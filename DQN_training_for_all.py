@@ -83,7 +83,7 @@ if __name__ == '__main__':
     [y,m] = key.split('_')
     d = (states_dict[key])[0]
     initial_state = [1 ,int(y), int(m), d, 0, 0]
-    path_to_save = 'data/models/dqn_model.h5'
+    path_to_save = 'data/models/dqn_model150.h5'
     dqn_train.train(initial_state, path_to_save,states_dict)
                 
     

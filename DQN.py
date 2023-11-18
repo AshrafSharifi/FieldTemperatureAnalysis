@@ -40,7 +40,7 @@ class DQN:
         
         self.min_temp = 0
         self.max_temp = 0
-        
+        self.process_time = 15
         # self.state=None
         # self.get_min_max_temp(self.state)
 
@@ -231,7 +231,27 @@ class DQN:
     def has_shape_zero(self,value):
         return value[5].shape == (0, 0)
 
+    def refine_time(self,table):
+        
+        visited_rows = [0]
 
+        for row in table:
+            visited_rows.append(1 if row[1] == 'Visited' else 0)
+
+        cumulative_sum = np.cumsum(visited_rows)  
+        
+        count = 0
+        for row in table:
+            state = row[6]
+            base_time = str(state[0][4])+':'+str(state[0][5])+':00'
+            extra_time = self.process_time * cumulative_sum[count]
+
+            state[0][4], state[0][5], Flag = self.func.add_minutes(base_time, extra_time)
+            row[6]=state
+            count += 1
+            
+        
+        return table
     def print_traj(self,path,print_flag=True):
         
         passedkeys = {key:value[1] for key, value in path.items() if value[0] == 'Passed'}
@@ -240,7 +260,7 @@ class DQN:
         # Sort the list of tuples based on the values
         sorted_list = sorted(list_of_tuples, key=lambda x: x[1])
         
-        while any(self.has_shape_zero(value) for value in path.values()):
+        while any(self.has_shape_zero(value) for value in path.values() if value[0]!= 'NotVisited'):
             for (key, val) in sorted_list:
                 while path[key][5].shape == (0, 0):
                     previouskey_list = self.get_previous_key(path, key)
@@ -288,6 +308,7 @@ class DQN:
             if values[0] != 'NotVisited':
                 table.append([key, *values])
         table = sorted(table, key=lambda x: (x[6][0][3],x[6][0][4], x[6][0][5]))
+        table = self.refine_time(table)
         if print_flag:
             print(tabulate(table, headers, tablefmt="pretty"))
         return table

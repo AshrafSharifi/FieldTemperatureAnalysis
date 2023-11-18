@@ -210,7 +210,7 @@ if __name__ == '__main__':
     train_phase =   False      
     initial_state = [6 ,2021, 8, 27, 15, 30]  # Sensor number, year, month, day, hour, minute
     
-    path_to_save = "data/models/dqn_model.h5"
+    path_to_save = "data/models/dqn_model150.h5"
     
     if train_phase: 
         train(initial_state,path_to_save)

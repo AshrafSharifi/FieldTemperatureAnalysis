@@ -186,7 +186,7 @@ class functions(object):
       base_time = datetime.strptime(base_time, '%H:%M:%S')
 
       # Create a timedelta to represent the minutes to add
-      time_delta = timedelta(minutes=minutes_to_add)
+      time_delta = timedelta(minutes=int(minutes_to_add) )
 
       # Add the timedelta to the base time
       result_time = base_time + time_delta
