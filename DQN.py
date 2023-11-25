@@ -41,6 +41,7 @@ class DQN:
         self.min_temp = 0
         self.max_temp = 0
         self.process_time = 15
+        self.process_penalty = 0.1*(self.process_time / 60)
         # self.state=None
         # self.get_min_max_temp(self.state)
 
@@ -174,9 +175,9 @@ class DQN:
             time_factor = self.reach_time_minutes
             temperature_change =abs( (temperature_change - self.min_temp) / (self.max_temp - self.min_temp))
             time_factor = (self.reach_time_minutes - self.min_time) / (self.max_time - self.min_time)
-    
+            
             # Combine the two factors with the defined weights
-            reward = (self.temperature_weight * temperature_change) - (self.time_weight * time_factor)
+            reward = (self.temperature_weight * temperature_change) - (self.time_weight * time_factor) - self.process_penalty
             
             
             return reward,temperature_change,self.reach_time_minutes

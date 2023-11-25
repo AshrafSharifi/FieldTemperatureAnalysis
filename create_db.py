@@ -206,7 +206,7 @@ if __name__ == '__main__':
             current_state = [1 ,int(y), int(m), d, h, Min]  # Sensor number, year, month, day, hour, minute   
             while True:
                 print(current_state)
-                current_state,path = dqn_train.test(current_state, path_of_model,False,dqn)
+                current_state,path = dqn_train.test(current_state, path_of_model,True,dqn)
                 path = {key: value for key, value in path.items() if value[0]!= 'NotVisited'}
                 df_train,df_test = update_status(path,df_train,df_test)
                 if int(current_state[3]) == d+1:
