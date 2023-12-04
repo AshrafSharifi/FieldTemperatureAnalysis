@@ -208,10 +208,15 @@ if __name__ == '__main__':
     # Initialize the DQN agent
 
     train_phase =   False      
-    initial_state = [6 ,2021, 8, 29, 20, 00]  # Sensor number, year, month, day, hour, minute
+    initial_state =  [1,2021, 9, 28, 9, 00] 
+    # initial_state =  [1 ,2021, 10, 5, 21, 00] 
+
+    # Sensor number, year, month, day, hour, minute
     
-    path_to_save = "data/models/dqn_model150_old.h5"
-    
+    path_to_save = "data/current_work/DQN_models/With_process_time/dqn_model80.h5"
+    # path_to_save = "data/models/dqn_model160_old.h5"
+   
+   
     if train_phase: 
         train(initial_state,path_to_save)
     else:

@@ -11,7 +11,7 @@ import copy
 from DQN import *
         
     
-
+root = 'data/current_work_with_process_time/DB/'
 def create_states_dict():
     
 
@@ -92,8 +92,8 @@ def add_status_col_to_csv():
         
         # Specify the input CSV file and output CSV file
         input_csv_file =  "data/sensor_t" + str(sensor) + ".csv"
-        output_csv_file = "data/DB/DB_with_status/sensor_t" + str(sensor) + ".csv"
-        del_csv_file = "data/DB/DB_with_deleted_rows/sensor_t" + str(sensor) + ".csv"
+        output_csv_file = root + "DB_with_status/sensor_t" + str(sensor) + ".csv"
+        del_csv_file = root + "DB_with_deleted_rows/sensor_t" + str(sensor) + ".csv"
         
         # Load the CSV file into a pandas DataFrame
         df = pd.read_csv(input_csv_file)
@@ -128,7 +128,7 @@ def localize_row(df,state):
 
 def del_rows(del_sensors,state):
     for us in del_sensors:
-        delete_csv_file = "data/DB/DB_with_deleted_rows/sensor_t" + str(us) + ".csv"
+        delete_csv_file = root + "DB_with_deleted_rows/sensor_t" + str(us) + ".csv"
         us_df = pd.read_csv(delete_csv_file)
         us_state = state.copy()
         us_state[0] = us
@@ -147,7 +147,7 @@ def update_status(path,df_train,df_test):
         
         state = (item[5])[0]
         sensor = state[0]
-        csv_file = "data/DB/DB_with_status/sensor_t" + str(sensor) + ".csv"
+        csv_file = root + "DB_with_status/sensor_t" + str(sensor) + ".csv"
         
         df = pd.read_csv(csv_file)
         
@@ -174,25 +174,29 @@ def update_status(path,df_train,df_test):
         
 if __name__ == '__main__':
     
+    
     pd.options.mode.chained_assignment = None 
-    create_states_dict()
-    add_status_col_to_csv()
-    create_states_dict()
+    # create_states_dict()
+    # add_status_col_to_csv()
+    # create_states_dict()
+    
+    
     fin_name = 'data/states_dict'
     with open(fin_name, 'rb') as fin:
         states_dict = pickle.load(fin)
     fin.close() 
-    path_of_model = 'data/models/dqn_model150.h5'
+    path_of_model = 'data/current_work_without_process_time/DQN_models/Without_process_time/dqn_model150_old.h5'
     dqn = DQN()
     dqn.get_min_max_temp()
     
     change_month = False
 
-    csv_file = "data/DB/DB_with_status/sensor_t1.csv"   
+    csv_file = root + "DB_with_status/sensor_t1.csv"   
     df = pd.read_csv(csv_file)
     df_train =  pd.DataFrame(columns=list(df.columns) + ['sensor'])
     df_test =  pd.DataFrame(columns=list(df.columns) + ['sensor'])
-    
+    counter = 0
+    time_data = []
     for key,value in states_dict.items():
         # if key != '2021_9':
         #     continue
@@ -206,9 +210,12 @@ if __name__ == '__main__':
             current_state = [1 ,int(y), int(m), d, h, Min]  # Sensor number, year, month, day, hour, minute   
             while True:
                 print(current_state)
+                time_data.append(current_state)
+      
                 current_state,path = dqn_train.test(current_state, path_of_model,True,dqn)
                 path = {key: value for key, value in path.items() if value[0]!= 'NotVisited'}
-                df_train,df_test = update_status(path,df_train,df_test)
+                # df_train,df_test = update_status(path,df_train,df_test)
+                time_data.append(current_state)
                 if int(current_state[3]) == d+1:
                     d = current_state[3]
                     m = current_state[2]
@@ -224,9 +231,11 @@ if __name__ == '__main__':
                     h = current_state[4]
                     Min = current_state[5]
                     break
-                
-    df_train.to_csv("data/DB/train_DB.csv", index=False, encoding='utf-8')
-    df_test.to_csv("data/DB/test_DB.csv", index=False, encoding='utf-8')
+    with open('data/all_traj', 'wb') as fout:
+        pickle.dump(time_data, fout)
+    fout.close()            
+    # df_train.to_csv(root + "train_DB.csv", index=False, encoding='utf-8')
+    # df_test.to_csv(root + "test_DB.csv", index=False, encoding='utf-8')
                     
                 
  

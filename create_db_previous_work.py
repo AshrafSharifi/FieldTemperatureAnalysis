@@ -138,64 +138,68 @@ def del_rows(del_sensors,state):
             us_df.to_csv(delete_csv_file, index=False, encoding='utf-8')
                 
                 
-def update_status(path,df_train,df_test):
-    
-    
-    
-    for item in path.values():
-        
-        
-        state = (item[5])[0]
-        sensor = state[0]
-        csv_file = "data/DB/DB_with_status/sensor_t" + str(sensor) + ".csv"
-        
-        df = pd.read_csv(csv_file)
-        
-        indx = localize_row(df,state)
-        df.loc[indx,'status'] = item[0]
-        df.to_csv(csv_file, index=False, encoding='utf-8')
-        if item[0]=='Visited':
-            
-            df_train.loc[len(df_train)] = list(df.iloc[indx]) + [str(sensor)]
-            del_sensors = list(range(1,9))
-            del_sensors.remove(sensor)
-            del_rows(del_sensors,state)
+def add_row(state,df_train,df_test):
 
-        if item[0]=='Passed':
-            df_test.loc[len(df_test)] = list(df.iloc[indx]) + [str(sensor)]
-            del_sensors = list(range(1,9))
-            del_rows(del_sensors,state)
-            
+    sensor = state[0]
+    csv_file = "data/sensor_t" + str(sensor) + ".csv"
+    
+    df = pd.read_csv(csv_file)
+    
+    indx = localize_row(df,state)
+  
+    df_train.loc[len(df_train)] = list(df.iloc[indx]) + [str(sensor)]
+    del_sensors = list(range(1,9))
+    del_sensors.remove(sensor)
+    
+    for item in del_sensors:
+        csv_file = "data/sensor_t" + str(item) + ".csv"
+        df = pd.read_csv(csv_file)
+        state[0] = item
+        indx = localize_row(df,state)
+        df_test.loc[len(df_test)] = list(df.iloc[indx]) + [str(item)]
+        
+
     return df_train,df_test
             
         
-    
+def find_next_item(arr, num):
+    # Find the index of the given number in the array
+    try:
+        index = arr.index(num)
+    except ValueError:
+        print(f"The number {num} is not in the array.")
+        return None
+
+    # Calculate the index of the next number in the circular array
+    next_index = (index + 1) % len(arr)
+
+    # Return the next number
+    return arr[next_index]    
        
         
 if __name__ == '__main__':
     
     pd.options.mode.chained_assignment = None 
-    create_states_dict()
-    add_status_col_to_csv()
-    create_states_dict()
+
     fin_name = 'data/states_dict'
     with open(fin_name, 'rb') as fin:
         states_dict = pickle.load(fin)
     fin.close() 
-    path_of_model = 'data/models/dqn_model150.h5'
-    dqn = DQN()
-    dqn.get_min_max_temp()
     
     change_month = False
-
-    csv_file = "data/DB/DB_with_status/sensor_t1.csv"   
+    state_dim = 6
+    csv_file = "data/sensor_t1.csv"   
     df = pd.read_csv(csv_file)
     df_train =  pd.DataFrame(columns=list(df.columns) + ['sensor'])
     df_test =  pd.DataFrame(columns=list(df.columns) + ['sensor'])
-    
+    func= functions()
+    path = [1,2,4,6,7,5,3]
+
+    prev_time_data=[]
+    process_counter=0
+    process_in_day=[]
     for key,value in states_dict.items():
-        # if key != '2021_9':
-        #     continue
+
         [y,m] = key.split('_')
         d = value[0]
         h = 0
@@ -206,10 +210,22 @@ if __name__ == '__main__':
             current_state = [1 ,int(y), int(m), d, h, Min]  # Sensor number, year, month, day, hour, minute   
             while True:
                 print(current_state)
-                current_state,path = dqn_train.test(current_state, path_of_model,True,dqn)
-                path = {key: value for key, value in path.items() if value[0]!= 'NotVisited'}
-                df_train,df_test = update_status(path,df_train,df_test)
+                prev_time_data.append(current_state)
+                df_train,df_test = add_row(current_state.copy(),df_train,df_test)
+                
+                base_time = str(current_state[4]) + ':' + str(current_state[5]) + ':00'
+                next_hour, next_min, Flag = func.add_minutes(base_time, 15)
+                
+                next_sensor = find_next_item(path,current_state[0])
+                current_state = np.array([int(next_sensor), int(current_state[1]), int(current_state[2]), int(current_state[3]), next_hour, next_min])
+                # current_state = np.reshape(state, [1, state_dim])
+                prev_time_data.append(current_state)
+                if Flag:
+                    current_state[3]=current_state[3]+1
+                process_counter +=1    
                 if int(current_state[3]) == d+1:
+                    process_in_day.append(process_counter)
+                    process_counter=0
                     d = current_state[3]
                     m = current_state[2]
                     y = current_state[1]
@@ -224,9 +240,14 @@ if __name__ == '__main__':
                     h = current_state[4]
                     Min = current_state[5]
                     break
-                
-    df_train.to_csv("data/DB/train_DB.csv", index=False, encoding='utf-8')
-    df_test.to_csv("data/DB/test_DB.csv", index=False, encoding='utf-8')
+    with open('data/prev_all_traj', 'wb') as fout:
+        pickle.dump(prev_time_data, fout)
+    fout.close()   
+    with open('data/prev_process_in_day', 'wb') as fout:
+        pickle.dump(process_in_day, fout)
+    fout.close()            
+    # df_train.to_csv("data/DB/DB_previous_work/train_DB.csv", index=False, encoding='utf-8')
+    # df_test.to_csv("data/DB/DB_previous_work/test_DB.csv", index=False, encoding='utf-8')
                     
                 
  

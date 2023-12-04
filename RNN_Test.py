@@ -37,21 +37,55 @@ import random
 # timesteps =random.choice(timesteps_range)
 
 
-train = False
+train = True
 normalize_flag = False
 print_flag = True
-dropout = 0.3
-epochs = 400
-batch_size = 16
-validation_split = 0.2
-timesteps = 3
-patience=100
-learning_rate=0.0001
+current_DB = True
 
-fin_name = 'data/hyper_parameters'
-with open(fin_name, 'rb') as fin:
+if current_DB:
+    DB_file = "data/DB/current_work/train_DB.csv"
+    if normalize_flag:
+        hyper_params_name = 'data/RNN_models/current_work/withNormalization/hyper_parameters'
+        model_file = 'data/RNN_models/current_work/withNormalization/temperature_prediction_model.hdf5'
+    else:
+        hyper_params_name = 'data/RNN_models/current_work/without_Normalization/hyper_parameters'
+        model_file = 'data/RNN_models/current_work/without_Normalization/temperature_prediction_model.hdf5'
+else:
+    DB_file = "data/DB/previous_work/train_DB.csv"
+    if normalize_flag:
+        hyper_params_name = 'data/RNN_models/previous_work/withNormalization/hyper_parameters'
+        model_file = 'data/RNN_models/previous_work/withNormalization/temperature_prediction_model.hdf5'
+    else:
+        hyper_params_name = 'data/RNN_models/previous_work/without_Normalization/hyper_parameters'
+        model_file = 'data/RNN_models/previous_work/without_Normalization/temperature_prediction_model.hdf5'
+    
+
+
+with open(hyper_params_name, 'rb') as fin:
     hyper_parameters = pickle.load(fin)
 fin.close() 
+
+# sorted_data = dict(sorted(hyper_parameters.items(), key=lambda x: x[1]['result'][3]))
+
+config = (min(hyper_parameters.items(), key=lambda x: x[1]['result'][3]))[1]
+
+dropout = config['dropout']
+epochs = config['epochs']
+batch_size = config['batch_size']
+validation_split = 0.2
+timesteps = config['timesteps']
+patience=config['patience']
+learning_rate=config['learning_rate']
+
+# dropout = 0.3
+# epochs = 400
+# batch_size = 16
+# validation_split = 0.2
+# timesteps = 3
+# patience=100
+# learning_rate=0.0001
+
+
 
 hyper_params = dict()
 hyper_params['normalize_flag'] = normalize_flag
@@ -102,8 +136,8 @@ if train:
     
     
     # Load the data
-    file = "data/DB/train_DB.csv"
-    df = pd.read_csv(file)
+    
+    df = pd.read_csv(DB_file)
     index = data_header.index('complete_timestamp(YYYY_M_DD_HH_M)')
     df.dropna(inplace=True)
     
@@ -149,18 +183,18 @@ if train:
     # Build the model
     model = create_model()
     # model.summary()
-    checkpointer = ModelCheckpoint(filepath = 'data/DB/temperature_prediction_model.hdf5', verbose = 2, save_best_only = True)
+    checkpointer = ModelCheckpoint(filepath = model_file, verbose = 2, save_best_only = True)
     early_stopping = EarlyStopping(monitor='val_loss', patience=patience, restore_best_weights=True)
     # Train the model       
     history = model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=validation_split,callbacks = [checkpointer,early_stopping])
     
     # Visualize the training loss
-    plt.plot(history.history['loss'], label='Training Loss')
-    plt.plot(history.history['val_loss'], label='Validation Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.show()
+    # plt.plot(history.history['loss'], label='Training Loss')
+    # plt.plot(history.history['val_loss'], label='Validation Loss')
+    # plt.xlabel('Epochs')
+    # plt.ylabel('Loss')
+    # plt.legend()
+    # plt.show()
     
     # Save the trained model
     
@@ -184,7 +218,7 @@ else:
     #     print(key, value)
     
     # Load the trained model for testing
-    model = load_model('data/DB/temperature_prediction_model.hdf5')
+    model = load_model(model_file)
     # model = (min(hyper_parameters.items(), key=lambda x: x[1]['result'][3]))[1]['model']
     fin_name = 'data/states_dict'
     with open('data/trained_data', 'rb') as fin:

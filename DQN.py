@@ -23,8 +23,8 @@ class DQN:
         self.batch_size = 8  # Batch size for training
         self.memory_size = 20000  # Size of the experience replay buffer
         self.reach_time = dict()
-        self.temperature_weight = 2  # Weight for maximizing temperature change
-        self.time_weight = 3  # Weight for minimizing time
+        self.temperature_weight = 4  # Weight for maximizing temperature change
+        self.time_weight = 2  # Weight for minimizing time
         
         self.memory = deque(maxlen=self.memory_size)
         self.model = self._build_model()
@@ -41,7 +41,8 @@ class DQN:
         self.min_temp = 0
         self.max_temp = 0
         self.process_time = 15
-        self.process_penalty = 0.1*(self.process_time / 60)
+        #self.process_penalty = 0.5*(self.process_time)
+        self.process_penalty = 0.5*(self.process_time / 60)
         # self.state=None
         # self.get_min_max_temp(self.state)
 
@@ -56,7 +57,7 @@ class DQN:
         # self.max_temp = temp_info['max_temp']
         
         
-
+ 
     def get_min_max_temp(self,state=None):
         # temp_data =  self.sensorsdata["sensor"+str(state[0])]
         # temp_data = [value for value in temp_data.values()][0]
@@ -78,7 +79,7 @@ class DQN:
         model.add(Dense(24, input_dim=self.state_dim, activation='relu'))
         model.add(Dense(24, activation='relu'))
         model.add(Dense(self.action_dim, activation='linear'))
-        model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.001))
+        model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.01))
         return model
 
     def remember(self, state, action, reward, next_state, done):
@@ -118,6 +119,13 @@ class DQN:
                 #     while True:
                 #         action = random.randrange(1, self.action_dim)
                 #         return action             
+    
+    def compute_reach_time(self,current_sensor, next_sensor):
+        reach_time_data = self.reach_time["sensor"+str(current_sensor)]
+        reach_time = reach_time_data[str(current_sensor)+'_'+str(next_sensor)]
+        return reach_time
+        
+    
     
     def step(self,state,action):
         
@@ -162,7 +170,7 @@ class DQN:
     
     def calculate_reward(self,state, next_state):
         
-
+       
         if next_state[0,0]== state[0,0]:
             return -1000,0,90
         else:    
@@ -171,10 +179,10 @@ class DQN:
             next_temperature = self.get_current_temp(next_state)
 
             # Calculate the temperature change from current to next state
-            temperature_change = (next_temperature - current_temperature)
-            time_factor = self.reach_time_minutes
-            temperature_change =abs( (temperature_change - self.min_temp) / (self.max_temp - self.min_temp))
-            time_factor = (self.reach_time_minutes - self.min_time) / (self.max_time - self.min_time)
+            temperature_change = next_temperature - current_temperature
+            #time_factor = self.reach_time_minutes
+            temperature_change =abs((temperature_change - self.min_temp) / (self.max_temp - self.min_temp))
+            time_factor = abs((self.reach_time_minutes - self.min_time) / (self.max_time - self.min_time))
             
             # Combine the two factors with the defined weights
             reward = (self.temperature_weight * temperature_change) - (self.time_weight * time_factor) - self.process_penalty
