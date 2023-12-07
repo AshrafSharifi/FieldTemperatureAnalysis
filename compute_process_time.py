@@ -31,12 +31,27 @@ def time_difference(time1, time2):
     # return f"{hours_difference:02d}:{minutes_difference:02d}"
 
     return difference_in_minutes
+def remove_outliers(data):
+    # Calculate the first and third quartiles (Q1 and Q3)
+    Q1 = sorted(data)[int(len(data) * 0.25)]
+    Q3 = sorted(data)[int(len(data) * 0.75)]
 
+    # Calculate the IQR
+    IQR = Q3 - Q1
+
+    # Define the lower and upper bounds for outliers
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+
+    # Remove outliers from the list
+    cleaned_data = [x for x in data if lower_bound <= x <= upper_bound]
+
+    return cleaned_data
 process_time=False
 
 if process_time:
     
-    t_list=['current','prev']
+    t_list=['current']
     
     for t_item in t_list:
         if(t_item=='current'):
@@ -46,81 +61,131 @@ if process_time:
             with open('data/prev_all_traj', 'rb') as fin:
                 all_traj = pickle.load(fin)
                 
-        total_time_day = dict()
+        # total_time_day = dict()
         day = all_traj[0][3]
         counter = 0
         total_time_path = []
         
-        for i in range(0, len(all_traj)-1, 2):
-            current_element = all_traj[i]
-            next_element = all_traj[i + 1]
+        if t_item=='current':
+            for i in range(2, len(all_traj)-1, 2):
+                current_element =np.reshape(all_traj[i], [1, 6]) 
+                next_element = all_traj[i + 1]
+               
+                # if next_element[0,3] != day:
+                #     total_time_day[str(day)] = total_time_path
+                #     total_time_path = []
+                #     counter = 0
             
-            if next_element[3] != day:
-                total_time_day[str(day)] = total_time_path
-                total_time_path = []
-                counter = 0
-        
-            if counter == 0:
-                day = next_element[3]
-                counter += 1
-                continue
-        
-            time1 = str(current_element[4]) + ':' + str(current_element[5])
-            time2 = str(next_element[4]) + ':' + str(next_element[5])
-            result = time_difference(time1, time2)
-            total_time_path.append(result)
-        
-        # Store the last day's data
-        total_time_day[str(day)] = total_time_path
-        
+                # if counter == 0:
+                #     day = next_element[0,3]
+                #     counter += 1
+                    
+                current_element=np.reshape(current_element, [1, 6])  
+                next_element=np.reshape(next_element, [1, 6])  
+    
+                try:
+                    # Create datetime instances
+                    datetime1 = datetime(current_element[0,1], current_element[0,2], current_element[0,3], current_element[0,4], current_element[0,5])
+                    datetime2 = datetime(next_element[0,1], next_element[0,2], next_element[0,3], next_element[0,4], next_element[0,5])
+                    
+                    # Calculate time difference
+                    time_difference = datetime2 - datetime1
+                    
+                    # Extract days, hours, and minutes from the time difference
+                    result = (datetime2 - datetime1).total_seconds() / 60
+    
+    
+                    # time1 = str(current_element[0,4]) + ':' + str(current_element[0,5])
+                    # time2 = str(next_element[0,4]) + ':' + str(next_element[0,5])
+                    # result = time_difference(time1, time2)
+                    total_time_path.append(result)
+                except:
+                    continue
+                # if result == 270:
+                #     print(current_element)
+                #     print(next_element)
+            
+            # Store the last day's data
+            # total_time_day[str(day)] = total_time_path
+        else:
+            indices = [i for i, arr in enumerate(all_traj) if arr[0] == 3]
+            
+
+
+
+
+            result=0
+            round_counter = 0
+            last_valid_index = 0  # Initialize the variable to keep track of the last valid index
+            i = 0
+            
+            while i < len(indices) - 1:
+                round_counter += 1
+                current_element = all_traj[indices[i]]
+                next_element = all_traj[indices[i + 1]]
+                print(current_element)
+                print(next_element)
+                time1 = str(current_element[4]) + ':' + str(current_element[5])
+                time2 = str(next_element[4]) + ':' + str(next_element[5])
+                result = time_difference(time1, time2)
+                print(result)
+            
+                # if result < 0:
+                #     print(round_counter - 1)
+                #     i = last_valid_index - 1  # Continue with the next index
+                # else:
+                #     last_valid_index = i  # Update the last valid index when the result is not negative
+                i += 2  # Move to the next index
+                if result<0:
+                    i -=1
+                    continue
+                total_time_path.append(result)
+
         
         if(t_item=='current'):
-            with open('data/total_time_day', 'wb') as fout:
-                pickle.dump(total_time_day, fout)  
+            with open('data/total_time_path', 'wb') as fout:
+                pickle.dump([x for x in total_time_path if x >= 0], fout)  
         else:
-            with open('data/prev_total_time_day', 'wb') as fout:
-                pickle.dump(total_time_day, fout)  
+            with open('data/prev_total_time_path', 'wb') as fout:
+                pickle.dump([x for x in total_time_path if x >= 0], fout)  
         
     
 
         
         
 else:
-    with open('data/total_time_day', 'rb') as fin:
-        total_time_day = pickle.load(fin)
+    with open('data/total_time_path', 'rb') as fin:
+        total_time_path = pickle.load(fin)
     fin.close() 
+    total_time_path =remove_outliers(total_time_path)
+    # print(len(total_time_path))
+    # total_time_path = [x for x in total_time_path if x <= 195]
+    print(len(total_time_path))
+    average_time_per_path = sum(total_time_path)/len(total_time_path)
+   
+    print('average:' + str(average_time_per_path))
+    print('min:' + str(min(total_time_path)))
+    print('max:' + str(max(total_time_path)))
     
-    days=0
-    sum_time=[]
-    for item in total_time_day.values():
-        if len(item)!=0:
-            sum_time.append(sum(item))
-            days+=1
     
-    average_time=sum(sum_time)/days
-    print(average_time/60)
              
     
-    with open('data/prev_total_time_day', 'rb') as fin:
-        total_time_day = pickle.load(fin)
+    with open('data/prev_total_time_path', 'rb') as fin:
+        prev_total_time_path = pickle.load(fin)
     fin.close() 
-    with open('data/prev_process_in_day', 'rb') as fin:
-        prev_process_in_day = pickle.load(fin)
-    fin.close() 
-    days=0
-    prev_sum_time=[]
-    for item in total_time_day.values():
-        if len(item)!=0:
-            prev_sum_time.append(sum(item)+(prev_process_in_day[days]*15))
-            days+=1
-    
+   
+    process_time_total= len(prev_total_time_path)*7*15
+    average_time_per_prev_path = (sum(prev_total_time_path)+process_time_total) /len(prev_total_time_path)
           
             
-    prev_average_time=sum(prev_sum_time)/days
-    print(prev_average_time/60)
+    
+    print(average_time_per_prev_path)
 
         
- 
+
+
+
+
     
     
     

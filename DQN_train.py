@@ -16,24 +16,30 @@ from tensorflow.keras.models import load_model
 def train(initial_state, path_to_save,state_dict = None):
     dqn = DQN()
     dqn.get_min_max_temp(initial_state)
+    his_trajectory,initial_state = extract_history_traj(dqn,np.reshape(initial_state, [1, dqn.state_dim]) )
+    initial_his_trajectory = his_trajectory.copy()
+    
     # Training loop
     for episode in range(dqn.episode_count):  # Adjust the number of episodes as needed
     
     
-        state = initial_state  # Sensor number, year, month, day, hour, minute
-        if episode > 1:
+        state = initial_state.copy()  # Sensor number, year, month, day, hour, minute
+        his_trajectory = initial_his_trajectory.copy()
+        if episode > 1 and state_dict!=None:
             
-            state[0] =random.choice(range(1,8))
+            state[0,0] =random.choice(range(1,8))
             keys = list(state_dict.keys())
             random_key = random.choice(keys)
             [y,m] = random_key.split('_')
-            state[1]=int(y)
-            state[2]=int(m)
-            state[3] = random.choice(state_dict[random_key])
+            state[0,1]=int(y)
+            state[0,2]=int(m)
+            state[0,3] = random.choice(state_dict[random_key])
             random_hour = random.randint(0, 23)
             random_min = random.choice([0, 15, 30, 45])
-            state[4] = random_hour
-            state[5] = random_min
+            state[0,4] = random_hour
+            state[0,5] = random_min
+            his_trajectory,state = extract_history_traj(dqn,state)
+            
         state = np.reshape(state, [1, dqn.state_dim])  # Reshape the state for Keras
         
   
@@ -61,7 +67,8 @@ def train(initial_state, path_to_save,state_dict = None):
             next_state = np.reshape(next_state, [1, dqn.state_dim])
                               
                 
-            reward,temperature_difference,reach_time_minutes = dqn.calculate_reward(state, next_state)  # Calculate the reward
+            reward,temperature_difference,reach_time_minutes,his_trajectory = dqn.calculate_reward(state, next_state,his_trajectory)  # Calculate the reward
+            
             total_reward += reward
             
             
@@ -77,8 +84,8 @@ def train(initial_state, path_to_save,state_dict = None):
      
         dqn.replay(dqn.replay_count)  # Train the DQN
         
-        # if episode == 50:
-        #     dqn.model.save("data/dqn_model50.h5")
+        if episode %10 == 0:
+           dqn.model.save("data/current_work_with_process_time/DQN_models/With_process_time/dqn_model"+str(episode)+".h5")
         # elif episode == 70:
         #     dqn.model.save("data/dqn_model70.h5")  
         # elif episode == 80:
@@ -91,11 +98,15 @@ def train(initial_state, path_to_save,state_dict = None):
 
 
 
-def test(initial_state,path_to_save,print_flag=True,dqn = None):
+def test(initial_state,path_to_save,print_flag=True,dqn = None,his_traj=None):
     
     if dqn==None:
         dqn = DQN()
         dqn.get_min_max_temp(initial_state)
+    his_trajectory=his_traj  
+    if his_trajectory==None:
+        his_trajectory,initial_state = extract_history_traj(dqn,np.reshape(initial_state, [1, dqn.state_dim]))
+   
     # Load the DQN model
     loaded_model = load_model(path_to_save)
     # New state for prediction (make sure it matches the input shape of the model)
@@ -111,13 +122,15 @@ def test(initial_state,path_to_save,print_flag=True,dqn = None):
         "3": ["NotVisited", 7, 0, 0, 0, np.empty((0, 0)),0]
            }
     path[str(state[0,0])][0] = 'Visited' 
-    
-    path[str(state[0,0])][5] =  state
-    initial_day = int(initial_state[3])
+    path[str(state[0,0])][5] = state
+    his_trajectory[str(state[0,0])][0]=state
+    temperature_difference = abs(his_trajectory[str(state[0,0])][1] - dqn.get_current_temp(state))
+    path[str(state[0,0])][3] =  temperature_difference
+    initial_day = int(initial_state[0,3])
     finish = False
+    num_of_visited_POIs = 0
     while finish == False:
-        # Reshape the new state if needed
-        
+        # Reshape the new state if neededhisory_trajectory=his_trajectory
         temp = loaded_model.predict(state)[0]
         temp = np.reshape(temp, [1, dqn.action_dim])[0]
         
@@ -166,10 +179,12 @@ def test(initial_state,path_to_save,print_flag=True,dqn = None):
        
         # if state[0][0]<action:
         #    passedkeys.add({key for key, value in path.items() if value[1] > path[str(state[0][0])][1] and value[0] == 'NotVisited'})
+        p_key = dqn.get_previous_key(path, str(action))
+        is_visited=1
+        next_state,Flag = dqn.step(state,action,1) 
         
-        next_state,Flag = dqn.step(state,action) 
         next_state = np.reshape(next_state, [1, dqn.state_dim])
-        reward,temperature_difference,reach_time = dqn.calculate_reward(state, next_state)  # Calculate the reward
+        reward,temperature_difference,reach_time,his_trajectory = dqn.calculate_reward(state, next_state,his_trajectory)  # Calculate the reward
         path[str(action)][2] = reward
         path[str(action)][3] = temperature_difference
         path[str(action)][4] = reach_time 
@@ -187,37 +202,95 @@ def test(initial_state,path_to_save,print_flag=True,dqn = None):
         
             
              
+         
+    
+    table = dqn.print_traj(path,print_flag,his_trajectory)
     
     
-    table = dqn.print_traj(path,print_flag)
+    last_state = (table[-1][6])
+    # if path[last_state[0,0]]=='Visited':
+    current_sensor = last_state[0,0]
+    current_hour = last_state[0,4]
+    current_minute = last_state[0,5]
+    base_time = str(current_hour)+':'+str(current_minute)+':00'
+    next_hour, next_min, Flag = dqn.func.add_minutes(base_time, dqn.process_time+15 )
     
+    next_state = dqn.find_next_item(last_state[0,0])
+    if Flag:
+        state[0,3]=state[0,3]+1
+        
+    new_state = [next_state,state[0,1],state[0,2],state[0,3],next_hour,next_min]
+        
     
-    
-    return (table[-1][6])[0],path
+    return np.reshape(new_state, [1, dqn.state_dim]),path,his_trajectory,table[-1][6]
         
         
     
     
 
     
+def extract_history_traj(dqn,current_state):
+    current_sensor = current_state[0,0]
+    next_sensor=0
+    path = [1,2,4,6,7,5,3]
+    history_path = dict()
+    initial_sensor=current_state[0,0]
+
+    while initial_sensor != next_sensor:
+        current_state = np.reshape(current_state, [1, dqn.state_dim])
+        current_sensor = current_state[0,0]
+        temperature = dqn.get_current_temp(current_state)
+        history_path[str(current_sensor)]=[current_state, temperature]
+        base_time = str(current_state[0,4]) + ':' + str(current_state[0,5]) + ':00'
+        next_hour, next_min, Flag = dqn.func.add_minutes(base_time, 15)
+        next_sensor = find_next_item(path,current_state[0,0])
+        current_state = np.array([int(next_sensor), int(current_state[0,1]), int(current_state[0,2]), int(current_state[0,3]), next_hour, next_min])
+    
+    # Custom sorting key based on day, hour, and minutes
+    def sorting_key(item):
+        return tuple(item[0][0, 2:5])
+    
+    # Sort the dictionary based on the custom key
+    his_trajectory = dict(sorted(history_path.items(), key=lambda x: sorting_key(x[1])))
+    last_item = list(his_trajectory.values())[-1]
+    current_state = last_item[0]
+    base_time = str(current_state[0,4]) + ':' + str(current_state[0,5]) + ':00'
+    next_hour, next_min, Flag = dqn.func.add_minutes(base_time, 15)
+    next_sensor = find_next_item(path,current_state[0,0])
+    current_state = np.array([int(next_sensor), int(current_state[0,1]), int(current_state[0,2]), int(current_state[0,3]), next_hour, next_min])
+
+    return history_path,np.reshape(current_state, [1, dqn.state_dim])
 
 
+def find_next_item(arr, num):
+    # Find the index of the given number in the array
+    try:
+        index = arr.index(num)
+    except ValueError:
+        print(f"The number {num} is not in the array.")
+        return None
 
+    # Calculate the index of the next number in the circular array
+    next_index = (index + 1) % len(arr)
+
+    # Return the next number
+    return arr[next_index]  
 
 if __name__ == '__main__':
     # Initialize the DQN agent
-
+    
     train_phase =   False      
-    initial_state =  [1,2021, 9, 28, 9, 00] 
+    initial_state =  [1,2021, 9, 29, 11, 0] 
     # initial_state =  [1 ,2021, 10, 5, 21, 00] 
 
     # Sensor number, year, month, day, hour, minute
     
-    path_to_save = "data/current_work/DQN_models/With_process_time/dqn_model80.h5"
+    path_to_save = "data/current_work_with_process_time/DQN_models/With_process_time/With_normalize/dqn_model160.h5"
     # path_to_save = "data/models/dqn_model160_old.h5"
    
    
     if train_phase: 
+        
         train(initial_state,path_to_save)
     else:
         test(initial_state,path_to_save)

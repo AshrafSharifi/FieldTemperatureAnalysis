@@ -6,7 +6,7 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
 from functions import *
 from tabulate import tabulate
-
+from keras.layers import BatchNormalization
 class DQN:
     def __init__(self):
         
@@ -23,8 +23,8 @@ class DQN:
         self.batch_size = 8  # Batch size for training
         self.memory_size = 20000  # Size of the experience replay buffer
         self.reach_time = dict()
-        self.temperature_weight = 4  # Weight for maximizing temperature change
-        self.time_weight = 2  # Weight for minimizing time
+        self.temperature_weight = 3  # Weight for maximizing temperature change
+        self.time_weight = 1  # Weight for minimizing time
         
         self.memory = deque(maxlen=self.memory_size)
         self.model = self._build_model()
@@ -41,7 +41,7 @@ class DQN:
         self.min_temp = 0
         self.max_temp = 0
         self.process_time = 15
-        #self.process_penalty = 0.5*(self.process_time)
+        # self.process_penalty = 0.5*(self.process_time)
         self.process_penalty = 0.5*(self.process_time / 60)
         # self.state=None
         # self.get_min_max_temp(self.state)
@@ -77,31 +77,31 @@ class DQN:
     def _build_model(self):
         model = Sequential()
         model.add(Dense(24, input_dim=self.state_dim, activation='relu'))
+        model.add(BatchNormalization())
         model.add(Dense(24, activation='relu'))
+        model.add(BatchNormalization())
         model.add(Dense(self.action_dim, activation='linear'))
-        model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.01))
+        model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.001))
         return model
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
 
-    # def act(self, state):
-    #     if np.random.rand() <= self.epsilon:
-    #         while True:
-    #             action = random.randrange(1, self.action_dim)
-    #             if action != state[0,0] and action != 0:
-    #                 return action
-    #     else:
-    #         while True:
-    #             action = np.argmax(self.model.predict(state)[0])
-    #             if action != state[0,0] and action != 0:
-    #                 return action
-    #             else:
-    #                 while True:
-    #                     action = random.randrange(1, self.action_dim)
-    #                     if action != state[0,0] and action != 0:
-    #                         return action
-    
+
+    def find_next_item(self,num):
+        arr = [1,2,4,6,7,5,3]
+        # Find the index of the given number in the array
+        try:
+            index = arr.index(num)
+        except ValueError:
+            print(f"The number {num} is not in the array.")
+            return None
+
+        # Calculate the index of the next number in the circular array
+        next_index = (index + 1) % len(arr)
+
+        # Return the next number
+        return arr[next_index] 
 
 
     def act(self, state):
@@ -127,7 +127,7 @@ class DQN:
         
     
     
-    def step(self,state,action):
+    def step(self,state,action,is_visited=0):
         
         current_sensor = state[0,0]
         current_hour = state[0,4]
@@ -139,7 +139,7 @@ class DQN:
             reach_to_next_time = reach_time[str(current_sensor)+'_'+str(action)]
             self.reach_time_minutes = reach_to_next_time
             base_time = str(current_hour)+':'+str(current_minute)+':00'
-            next_hour, next_min, Flag = self.func.add_minutes(base_time, reach_to_next_time)
+            next_hour, next_min, Flag = self.func.add_minutes(base_time, reach_to_next_time+(is_visited*self.process_time) )
             new_state = [action,state[0,1],state[0,2],state[0,3],next_hour,next_min]
         return new_state, Flag
         
@@ -168,45 +168,39 @@ class DQN:
             return current_temperature
     
     
-    def calculate_reward(self,state, next_state):
+    def calculate_reward(self,state, next_state,his_trajectory):
         
        
         if next_state[0,0]== state[0,0]:
             return -1000,0,90
         else:    
                     
-            current_temperature = self.get_current_temp(state)
+            desired_item = None
+
+            for key, value in his_trajectory.items():
+                if value[0][0, 0] == next_state[0,0]:
+                    desired_item = value
+                    break
+    
+           
             next_temperature = self.get_current_temp(next_state)
+            his_trajectory[key] = [next_state,next_temperature]
 
             # Calculate the temperature change from current to next state
-            temperature_change = next_temperature - current_temperature
-            #time_factor = self.reach_time_minutes
-            temperature_change =abs((temperature_change - self.min_temp) / (self.max_temp - self.min_temp))
+            temperature_change1 = next_temperature - desired_item[1]
+            
+            time_factor = self.reach_time_minutes
+            temperature_change =abs((temperature_change1 - self.min_temp) / (self.max_temp - self.min_temp))
             time_factor = abs((self.reach_time_minutes - self.min_time) / (self.max_time - self.min_time))
             
             # Combine the two factors with the defined weights
-            reward = (self.temperature_weight * temperature_change) - (self.time_weight * time_factor) - self.process_penalty
+            reward = (self.temperature_weight *abs( temperature_change)) - (self.time_weight * time_factor) - self.process_penalty
             
             
-            return reward,temperature_change,self.reach_time_minutes
+            return reward,temperature_change1,self.reach_time_minutes,his_trajectory
 
         
-        
-    # def replay(self):
-    #     if len(self.memory) < self.batch_size:
-    #         return
-    #     minibatch = random.sample(self.memory, self.batch_size)
-    #     for state, action, reward, next_state, done in minibatch:
-    #         target = reward
-    #         # if not done:
-    #         #     target = (reward + gamma * np.amax(self.model.predict(next_state)[0]))
-    #         target = (reward + self.gamma * np.amax(self.model.predict(next_state)[0]))
-    #         target_f = self.model.predict(state)
-    #         target_f[0][action] = target
-    #         self.model.fit(state, target_f, epochs=1, verbose=0)
-    #     if self.epsilon > self.epsilon_min:
-    #         self.epsilon *= self.epsilon_decay
-    #         self.epsilon = max(self.epsilon, self.epsilon_min)
+
     
     def replay(self, max_iterations):
         
@@ -251,17 +245,34 @@ class DQN:
         
         count = 0
         for row in table:
-            state = row[6]
-            base_time = str(state[0][4])+':'+str(state[0][5])+':00'
-            extra_time = self.process_time * cumulative_sum[count]
-
-            state[0][4], state[0][5], Flag = self.func.add_minutes(base_time, extra_time)
-            row[6]=state
+            if row[1] == 'Passed':
+                state = row[6]
+                base_time = str(state[0][4])+':'+str(state[0][5])+':00'
+                extra_time = self.process_time 
+    
+                state[0][4], state[0][5], Flag = self.func.add_minutes(base_time, extra_time)
+                row[6]=state
+                
             count += 1
-            
-        
+
+        initial_day = table[0][6][0][3]   
+        for row in table:
+            state = row[6]
+            if state[0][4] == 0 and state[0][5] == 0 and state[0][3]==initial_day:  # Check if hour is 0 and minutes is 0
+               state[0][3] += 1  # Increment the day by 1
         return table
-    def print_traj(self,path,print_flag=True):
+    
+    def add_prev_temp(self,table,his_trajectory):
+        
+
+        for row in table:
+            if row[1] == 'Passed':
+                temperature_difference = abs(his_trajectory[row[0]][1] - row[-1])
+                row[4] = temperature_difference
+                
+            
+        return table
+    def print_traj(self,path,print_flag=True,his_trajectory=None):
         
         passedkeys = {key:value[1] for key, value in path.items() if value[0] == 'Passed'}
         list_of_tuples = [(key, value) for key, value in passedkeys.items()]
@@ -288,36 +299,23 @@ class DQN:
             
                     key = previouskey
 
-        # for (key,val) in sorted_list:
-            
-            
-            
-            # if key == '1':
-            #     previouskey = {pkey for pkey, value in path.items() if value[1] == 7 and value[0]!= 'NotVisited'}
-            # else:
-            #     previouskey = {pkey for pkey, value in path.items() if value[1] == (path[key][1]-1) and value[0]!= 'NotVisited'}
-            # if len(previouskey) == 0:
-            #     continue
-            # previouskey = list(previouskey)
-            
-            
-            # pre_state = np.reshape(path[previouskey[0]][5], [1, self.state_dim]) 
-            # base_time = str(pre_state[0,4])+':'+str(pre_state[0,5])+':00'
-            # next_hour, next_min, Flag = self.func.add_minutes(base_time, 15)
-            # state= np.array([int(key) ,int(pre_state[0,1]), int(pre_state[0,2]), int(pre_state[0,3]), next_hour, next_min])
-            # path[key][5] = np.reshape(state, [1, self.state_dim])
-            
-        for key, value in path.items():
-            if value[0] != 'NotVisited':
-                path[key][6] = self.get_current_temp(path[key][5])
         
         headers = ["POI_number", "Status", "Priority", "Reward", "Temp_difference", "Reach_time", "State","temperature"]
         table = []
         for key, values in path.items():
             if values[0] != 'NotVisited':
                 table.append([key, *values])
+                
         table = sorted(table, key=lambda x: (x[6][0][3],x[6][0][4], x[6][0][5]))
         table = self.refine_time(table)
+        
+        table = sorted(table, key=lambda x: (x[6][0][3],x[6][0][4], x[6][0][5]))
+        for entry in table:
+            if entry[1] != 'NotVisited':
+                path_key = entry[1]  # Assuming entry[0] is the key in the path dictionary
+                entry[7] = self.get_current_temp(entry[6])
+        
+        table =self.add_prev_temp(table,his_trajectory)
         if print_flag:
             print(tabulate(table, headers, tablefmt="pretty"))
         return table

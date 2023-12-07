@@ -185,7 +185,7 @@ if __name__ == '__main__':
     with open(fin_name, 'rb') as fin:
         states_dict = pickle.load(fin)
     fin.close() 
-    path_of_model = 'data/current_work_without_process_time/DQN_models/Without_process_time/dqn_model150_old.h5'
+    path_of_model = "data/current_work_with_process_time/DQN_models/With_process_time/With_normalize/dqn_model160.h5"
     dqn = DQN()
     dqn.get_min_max_temp()
     
@@ -205,22 +205,28 @@ if __name__ == '__main__':
         h = 0
         Min = 0
         change_month=False
+        his_trajectory=None
         while change_month==False:
 
             current_state = [1 ,int(y), int(m), d, h, Min]  # Sensor number, year, month, day, hour, minute   
             while True:
                 print(current_state)
+                
+                    
                 time_data.append(current_state)
       
-                current_state,path = dqn_train.test(current_state, path_of_model,True,dqn)
+                current_state,path,his_trajectory,last_state = dqn_train.test(current_state, path_of_model,False,dqn,his_trajectory)
                 path = {key: value for key, value in path.items() if value[0]!= 'NotVisited'}
                 # df_train,df_test = update_status(path,df_train,df_test)
-                time_data.append(current_state)
-                if int(current_state[3]) == d+1:
-                    d = current_state[3]
-                    m = current_state[2]
-                    y = current_state[1]
+                time_data.append(last_state)
+                if int(current_state[0,3]) == d+1:
+                    his_trajectory=None
+                    d = current_state[0,3]
+                    m = current_state[0,2]
+                    y = current_state[0,1]
                     temp_val = states_dict[str(y)+'_'+str(m)]
+                    if d==12 and m==9:
+                        S=1
                     if d not in temp_val:
                         while d not in temp_val:
                             d += 1
@@ -228,8 +234,8 @@ if __name__ == '__main__':
                                 change_month = True
                                 break
                             
-                    h = current_state[4]
-                    Min = current_state[5]
+                    h = current_state[0,4]
+                    Min = current_state[0,5]
                     break
     with open('data/all_traj', 'wb') as fout:
         pickle.dump(time_data, fout)
