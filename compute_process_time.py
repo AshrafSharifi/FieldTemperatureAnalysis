@@ -14,6 +14,20 @@ from tensorflow.keras.optimizers import Adam
 import random
 from DQN import *
 
+
+def print_path(path):
+    headers = ["POI_number", "Status", "Priority", "Reward", "Temp_difference", "Reach_time", "State","temperature"]
+    table = []
+    for key, values in path.items():
+        if values[0] != 'NotVisited':
+            table.append([key, *values])
+            
+    table = sorted(table, key=lambda x: (x[6][0][3],x[6][0][4], x[6][0][5]))
+
+
+    print(tabulate(table, headers, tablefmt="pretty"))
+    
+    
 def time_difference(time1, time2):
     # Convert times to minutes
     hours1, minutes1 = map(int, time1.split(':'))
@@ -44,9 +58,11 @@ def remove_outliers(data):
     upper_bound = Q3 + 1.5 * IQR
 
     # Remove outliers from the list
-    cleaned_data = [x for x in data if lower_bound <= x <= upper_bound]
+    cleaned_data = [(index, value) for index, value in enumerate(data) if lower_bound <= value <= upper_bound]
+    outliers_data_with_indices = [(index, value) for index, value in enumerate(data) if lower_bound > value or value > upper_bound]
 
-    return cleaned_data
+
+    return cleaned_data,outliers_data_with_indices
 process_time=False
 
 if process_time:
@@ -62,7 +78,7 @@ if process_time:
                 all_traj = pickle.load(fin)
                 
         # total_time_day = dict()
-        day = all_traj[0][3]
+        day = all_traj[0][0][3]
         counter = 0
         total_time_path = []
         
@@ -70,7 +86,7 @@ if process_time:
             for i in range(2, len(all_traj)-1, 2):
                 current_element =np.reshape(all_traj[i], [1, 6]) 
                 next_element = all_traj[i + 1]
-               
+                counter+=2
                 # if next_element[0,3] != day:
                 #     total_time_day[str(day)] = total_time_path
                 #     total_time_path = []
@@ -99,6 +115,8 @@ if process_time:
                     # time2 = str(next_element[0,4]) + ':' + str(next_element[0,5])
                     # result = time_difference(time1, time2)
                     total_time_path.append(result)
+                    if result==105:
+                        D=1
                 except:
                     continue
                 # if result == 270:
@@ -154,20 +172,30 @@ if process_time:
         
         
 else:
+    
     with open('data/total_time_path', 'rb') as fin:
         total_time_path = pickle.load(fin)
     fin.close() 
-    total_time_path =remove_outliers(total_time_path)
+    with open('data/path_data', 'rb') as fin:
+        path_data = pickle.load(fin)
+    fin.close() 
+    cleaned,outliers =remove_outliers(total_time_path)
     # print(len(total_time_path))
     # total_time_path = [x for x in total_time_path if x <= 195]
+    # out= outliers[0][0]
+    # path=path_data[out+1]
+    # print_path(path)
+    
+    total_time_path = [item[1] for item in cleaned if item[1]>75]
     print(len(total_time_path))
     average_time_per_path = sum(total_time_path)/len(total_time_path)
-   
+    total_time_path = sorted(total_time_path)
     print('average:' + str(average_time_per_path))
     print('min:' + str(min(total_time_path)))
     print('max:' + str(max(total_time_path)))
-    
-    
+    # index = total_time_path.index(min(total_time_path))
+    # path=path_data[index-1]
+    # print_path(path)
              
     
     with open('data/prev_total_time_path', 'rb') as fin:

@@ -197,6 +197,8 @@ if __name__ == '__main__':
     df_test =  pd.DataFrame(columns=list(df.columns) + ['sensor'])
     counter = 0
     time_data = []
+    path_data=dict()
+    num=0
     for key,value in states_dict.items():
         # if key != '2021_9':
         #     continue
@@ -213,19 +215,25 @@ if __name__ == '__main__':
                 print(current_state)
                 
                     
-                time_data.append(current_state)
+                
       
-                current_state,path,his_trajectory,last_state = dqn_train.test(current_state, path_of_model,False,dqn,his_trajectory)
+                current_state,path,his_trajectory,last_state,first_state = dqn_train.test(current_state, path_of_model,False,dqn,his_trajectory)
                 path = {key: value for key, value in path.items() if value[0]!= 'NotVisited'}
                 # df_train,df_test = update_status(path,df_train,df_test)
+                
+                time_data.append(first_state)
+                path_data[num]=None
+                num+=1
                 time_data.append(last_state)
+                path_data[num]=path
+                num+=1
                 if int(current_state[0,3]) == d+1:
                     his_trajectory=None
                     d = current_state[0,3]
                     m = current_state[0,2]
                     y = current_state[0,1]
                     temp_val = states_dict[str(y)+'_'+str(m)]
-                    if d==12 and m==9:
+                    if d==2 and m==9:
                         S=1
                     if d not in temp_val:
                         while d not in temp_val:
@@ -239,6 +247,9 @@ if __name__ == '__main__':
                     break
     with open('data/all_traj', 'wb') as fout:
         pickle.dump(time_data, fout)
+    fout.close() 
+    with open('data/path_data', 'wb') as fout:
+        pickle.dump(path_data, fout)
     fout.close()            
     # df_train.to_csv(root + "train_DB.csv", index=False, encoding='utf-8')
     # df_test.to_csv(root + "test_DB.csv", index=False, encoding='utf-8')

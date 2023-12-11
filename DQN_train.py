@@ -216,13 +216,15 @@ def test(initial_state,path_to_save,print_flag=True,dqn = None,his_traj=None):
     next_hour, next_min, Flag = dqn.func.add_minutes(base_time, dqn.process_time+15 )
     
     next_state = dqn.find_next_item(last_state[0,0])
+    
+    temp_var = state[0,3].copy()
     if Flag:
-        state[0,3]=state[0,3]+1
+        temp_var=state[0,3]+1
         
-    new_state = [next_state,state[0,1],state[0,2],state[0,3],next_hour,next_min]
+    new_state = [next_state,state[0,1],state[0,2],temp_var,next_hour,next_min]
         
     
-    return np.reshape(new_state, [1, dqn.state_dim]),path,his_trajectory,table[-1][6]
+    return np.reshape(new_state, [1, dqn.state_dim]),path,his_trajectory,table[-1][6],table[0][6]
         
         
     

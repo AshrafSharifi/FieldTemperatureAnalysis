@@ -258,7 +258,7 @@ class DQN:
         initial_day = table[0][6][0][3]   
         for row in table:
             state = row[6]
-            if state[0][4] == 0 and state[0][5] == 0 and state[0][3]==initial_day:  # Check if hour is 0 and minutes is 0
+            if state[0][4] == 0 and state[0][3]==initial_day:  # Check if hour is 0 and minutes is 0
                state[0][3] += 1  # Increment the day by 1
         return table
     
@@ -266,7 +266,7 @@ class DQN:
         
 
         for row in table:
-            if row[1] == 'Passed':
+            if row[1] == 'Passed' and row[-1]!=None:
                 temperature_difference = abs(his_trajectory[row[0]][1] - row[-1])
                 row[4] = temperature_difference
                 
