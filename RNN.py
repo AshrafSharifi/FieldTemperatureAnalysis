@@ -13,6 +13,26 @@ from tensorflow.keras.layers import Bidirectional
 from tensorflow.keras.optimizers import Adam
 import random
 
+
+
+def localize_row(df_base,state):
+    
+    
+    
+    
+    row = df_base[df_base['complete_timestamp(YYYY_M_DD_HH_M)']== 	str(state[1])+'_'+str(state[2])+'_'+str(state[3])+'_'+str(state[4])+'_'+str(state[5])]
+    
+    new_column_header = 'sensor'
+    new_column_value = state[0]
+    
+    # Add the new column to the DataFrame
+    row = row.assign(**{new_column_header: new_column_value})
+
+    row= row[data_header]
+    
+    return row
+    
+    
 def analyze_result_per_POIs(resul):
     for POI in range(1,8):
         result_items = [item for item in result if item[0] == POI]
@@ -122,7 +142,7 @@ best_x_test = None
 best_y_train = None
 best_y_test = None
 best_scalers = None   
-train_for_specific_config = True 
+train_for_specific_config = False 
 with_out_process_time=False
 # Data preprocessing
 data_header = [
@@ -293,7 +313,7 @@ if train_for_specific_config:
     
     # Make predictions and denormalize
     y_pred = model.predict(x_test)
-    print("Prediction, real value, central value")
+    print("Prediction, real value")
     initial_x_test=np.array([]).reshape(0, x_test.shape[2]) 
     prediction_values=[]
     actual_values=[]
@@ -513,39 +533,106 @@ else:
             
             
             if print_flag:
+                df = dict()
+                for sensor in range(1,8):
+                    csv_file = "data/sensor_t"+str(sensor)+".csv"   
+                    df_sensor = pd.read_csv(csv_file)
+                    df[sensor]=df_sensor
+                    
+                    
+
                 # Make predictions and denormalize
-                y_pred = model.predict(x_test)
-                print("Prediction, real value")
-                initial_x_test=np.array([]).reshape(0, x_test.shape[2]) 
+                all_points = list(range(1,8))
                 prediction_values=[]
                 actual_values=[]
-                result=list()
-                for i in range(len(y_pred)):
-                   temp=(x_test[i][timesteps-1].reshape(-1, 1)).T
-                   initial_x_test = np.vstack([initial_x_test, np.array(temp[0])])
-              
-                   if normalize_flag:
-                       y_pred_denormalized = scalers['temp_to_estimate'].inverse_transform(y_pred[i].reshape(-1, 1)).flatten()
-                       y_test_denormalized = scalers['temp_to_estimate'].inverse_transform(y_test[i][timesteps-1].reshape(-1, 1)).flatten()
-                       
-                       prediction_values.append(y_pred_denormalized[0])
-                       actual_values.append(y_test_denormalized[0][0])
-                       
-                       print(y_pred_denormalized[0], ",", y_test_denormalized[0][0])
+                sensor_frequently = [0] * 7
+                
+                
+                
+                
+
+    
+                counter=0
+                array_test_secondry=[]
+                for i in range(len(y_test)):
+                    x_test_temp = x_test[i].copy()
+                    x_test_temp=((x_test_temp[timesteps-1].reshape(-1, 1)).T)[0]
+                    temp_points = all_points.copy()
+                    temp_points.remove(int(x_test_temp[0]))
                     
-                   else:
-                       predicted_value=y_pred[i].flatten()[0]
-                       real_value=y_test[i][timesteps-1].reshape(-1, 1)[0][0]
-                       prediction_values.append(predicted_value)
-                       actual_values.append(real_value)
+                    y= int(x_test_temp[1])
+                    m= int(x_test_temp[2])
+                    d= int(x_test_temp[5])
+                    h= int(x_test_temp[7])
+                    t= int(x_test_temp[8])
+                    
+                    for point in temp_points:
+                        state_to_find = [point,y,m,d,h,t]
+                        row = localize_row(df[point], state_to_find)
+                        if counter==0:
+                            df_test_secondry= pd.DataFrame(columns=row.columns)
+
+                        array_test_secondry.append(np.array(row))
+                        # df_test_secondry = pd.concat([df_test_secondry, pd.DataFrame([row])], ignore_index=True)
+                        
+                        # df_test_secondry = df_test_secondry.append(row_ordered, ignore_index=True)
+
+                        # real_value=row['temp_to_estimate'].values[0]
+                        # actual_values.append(real_value)
+                        # row = row.iloc[:, :-1]
+                        # row['complete_timestamp(YYYY_M_DD_HH_M)'] = t
+                        # row=row.to_numpy()
+                        # # Assuming row is your input data with shape (None, 10)
+                        # reshaped_row = row.reshape((1, row.shape[0], row.shape[1]))
+                        # y_pred = model.predict(reshaped_row)
+
+
+                        
                        
-                       print(predicted_value, ",", real_value)
-                       result.append([int(initial_x_test[i,0]),predicted_value,real_value])
+                        # prediction_values.append(y_pred[0][0])
+                        # # sensor_frequently[point]+=1
+                        # print(y_pred[0][0], ",", real_value)
+                        
+                        
+                    
+                        
+                        
+  
+                #     # y_pred = model.predict(x_test)
+                    
+                
+                # y_pred = model.predict(x_test)
+                # print("Prediction, real value")
+                # initial_x_test=np.array([]).reshape(0, x_test.shape[2]) 
+                # prediction_values=[]
+                # actual_values=[]
+                # result=list()
+                # for i in range(len(y_pred)):
+                #    temp=(x_test[i][timesteps-1].reshape(-1, 1)).T
+                #    initial_x_test = np.vstack([initial_x_test, np.array(temp[0])])
+              
+                #    if normalize_flag:
+                #        y_pred_denormalized = scalers['temp_to_estimate'].inverse_transform(y_pred[i].reshape(-1, 1)).flatten()
+                #        y_test_denormalized = scalers['temp_to_estimate'].inverse_transform(y_test[i][timesteps-1].reshape(-1, 1)).flatten()
+                       
+                #        prediction_values.append(y_pred_denormalized[0])
+                #        actual_values.append(y_test_denormalized[0][0])
+                       
+                #        print(y_pred_denormalized[0], ",", y_test_denormalized[0][0])
+                    
+                #    else:
+                #        predicted_value=y_pred[i].flatten()[0]
+                #        real_value=y_test[i][timesteps-1].reshape(-1, 1)[0][0]
+                #        prediction_values.append(predicted_value)
+                #        actual_values.append(real_value)
+                       
+                #        print(predicted_value, ",", real_value)
+                #        result.append([int(initial_x_test[i,0]),predicted_value,real_value])
                 
                 actual_values = np.reshape(actual_values, (1,len(actual_values)))
                 prediction_values = np.reshape(prediction_values, (1,len(prediction_values)))
                 compute_metrics(prediction_values,actual_values)
-                plot_result_for_each_month(actual_values,prediction_values,initial_x_test)
+                plot_result_for_each_POI(actual_values,prediction_values,initial_x_test)
                 analyze_result_per_POIs(result)
                 
                        
