@@ -66,9 +66,11 @@ class functions(object):
         plt.scatter(time_vector[sharp_change_indices], temperature_data[sharp_change_indices], c='r', marker='o')
         plt.xlabel('Time Intervals')
         plt.ylabel('Temperature')
-        plt.title("Temperature Data with Sharp Change Detection (" + self.date + "_Sensor: "+ str(self.sensor) +" _Threshold: "+ str(round(self.threshold, 3) )+ " )")
+        # plt.title("Temperature Data with Sharp Change Detection (" + self.date + "_Sensor: "+ str(self.sensor) +" _Threshold: "+ str(round(self.threshold, 3) )+ " )")
+        plt.title("Temperature Data with Sharp Change Detection (" + self.date + "_Sensor: "+ str(self.sensor) + " )")
         plt.legend(['Temperature Data', 'Sharp Changes'])
         plt.grid(True)
+        plt.ylim(0, 35)
         plt.show()
     if self.hasOutput:
         out= {}

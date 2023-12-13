@@ -167,13 +167,26 @@ class DQN:
                 
             return current_temperature
     
+    def calculate_reward_for_first_state(self,state, temperature_change):
+        
+       
+       
+            temperature_change =abs((temperature_change - self.min_temp) / (self.max_temp - self.min_temp))
+            # Combine the two factors with the defined weights
+            reward = (self.temperature_weight *abs( temperature_change)) - self.process_penalty
+            
+            
+            return reward
     
     def calculate_reward(self,state, next_state,his_trajectory):
         
        
         if next_state[0,0]== state[0,0]:
             return -1000,0,90
-        else:    
+        else:   
+            
+            
+                
                     
             desired_item = None
 

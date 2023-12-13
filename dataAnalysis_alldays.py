@@ -75,7 +75,7 @@ if __name__ == '__main__':
                 for day in filtered_data_step2['day_of_month'].unique():
                     idx = (filtered_data_step2['day_of_month'] == day)
                     filtered_data = filtered_data_step2.loc[idx,:]
-                    func = functions( filtered_data, threshold=threshold,sensor=0, displayResult=False, hasOutput=True)
+                    func = functions( filtered_data, threshold=threshold,sensor=0, displayResult=True, hasOutput=True)
                     data = func.data_preperation()
                     output = func.first_derivative()
                     allData = dict()

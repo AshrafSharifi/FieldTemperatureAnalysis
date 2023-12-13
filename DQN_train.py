@@ -124,8 +124,12 @@ def test(initial_state,path_to_save,print_flag=True,dqn = None,his_traj=None):
     path[str(state[0,0])][0] = 'Visited' 
     path[str(state[0,0])][5] = state
     his_trajectory[str(state[0,0])][0]=state
-    temperature_difference = abs(his_trajectory[str(state[0,0])][1] - dqn.get_current_temp(state))
+    temp=dqn.get_current_temp(state)
+    
+    temperature_difference = abs(his_trajectory[str(state[0,0])][1] - temp)
+    path[str(state[0,0])][2] = dqn.calculate_reward_for_first_state(state, temperature_difference) 
     path[str(state[0,0])][3] =  temperature_difference
+    his_trajectory[str(state[0,0])][1]=temp
     initial_day = int(initial_state[0,3])
     finish = False
     num_of_visited_POIs = 0
