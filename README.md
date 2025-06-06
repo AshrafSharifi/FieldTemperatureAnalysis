@@ -1,10 +1,10 @@
 # DRL-Based Path Planning for Greenhouse Climate Sensing
 
-This repository contains the implementation of the method described in the paper:
+This repository contains the python implementation of the method described in the paper:
 
 📄 **Optimizing the Trajectory of Agricultural Robots in Greenhouse Climatic Sensing with Deep Reinforcement Learning**  
 Ashraf Sharifi, Sara Migliorini, Davide Quaglia – ICCAD 2024  
-[IEEE Link](https://ieeexplore.ieee.org/document/10948753)
+[IEEE Link](https://ieeexplore.ieee.org/document/10553772)
 
 ## 🌱 Project Overview
 
